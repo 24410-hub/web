@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>동물 소리/이미지 퀴즈</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; }
+    .row { margin: 12px 0; }
+    #imageBox img { max-width: 100%; height: auto; border-radius: 12px; }
+    .options { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 12px; }
+    button { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; background: #fff; }
+    button:hover { background: #f5f5f5; }
+    .status { margin-top: 12px; min-height: 24px; font-weight: 600; }
+    .ok { color: #0a7a2f; }
+    .bad { color: #b00020; }
+    .pill { display:inline-block; padding: 4px 10px; border:1px solid #eee; border-radius:20px; margin-right:8px; }
+  </style>
+</head>
+<body>
+  <h1>동물 이미지 퀴즈</h1>
+
+
+  <div class="row">
+    <span class="pill">점수: <span id="score">0</span></span>
+    <span class="pill">문제: <span id="round">0</span>/<span id="total">5</span></span>
+  </div>
+
+
+  <div class="row">
+    <button id="startBtn">퀴즈 시작</button>
+    <button id="nextBtn" style="display:none">다음 문제</button>
+  </div>
+
+
+  <div id="quizArea" style="display:none">
+    <div id="imageBox" class="row"></div>
+    <div id="options" class="options"></div>
+    <div id="result" class="status"></div>
+  </div>
+
+
+  <hr class="row"/>
+
+
+  <h2>소리 API 테스트</h2>
+  <div class="row">
+    <input id="name" type="text" placeholder="dog / cat / pig"/>
+    <button onclick="getSound()">API 요청</button>
+  </div>
+  <h3 id="sound"></h3>
+  <div id="imgFromSound"></div>
+
+
+  <script>
+    const TOTAL_ROUNDS = 5;
+    document.getElementById('total').textContent = TOTAL_ROUNDS;
+
+
+    let current = null;  // { img, options, answer }
+    let canAnswer = false;
+    let score = 0;
+    let round = 0;
+
+
+    const startBtn = document.getElementById('startBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const quizArea = document.getElementById('quizArea');
+    const imageBox = document.getElementById('imageBox');
+    const optionsEl = document.getElementById('options');
+    const resultEl = document.getElementById('result');
+    const scoreEl = document.getElementById('score');
+    const roundEl = document.getElementById('round');
+
+
+    startBtn.addEventListener('click', () => {
+      score = 0; round = 0;
+      scoreEl.textContent = score;
+      roundEl.textContent = round;
+      startBtn.style.display = 'none';
+      nextBtn.style.display = 'inline-block';
+      quizArea.style.display = 'block';
+      loadQuestion();
+    });
+
+
+    nextBtn.addEventListener('click', () => {
+      if (round >= TOTAL_ROUNDS) {
+        // 게임 리셋
+        startBtn.style.display = 'inline-block';
+        nextBtn.style.display = 'none';
+        quizArea.style.display = 'none';
+        resultEl.textContent = '';
+        imageBox.innerHTML = '';
+        optionsEl.innerHTML = '';
+        return;
+      }
+      loadQuestion();
+    });
+
+
+    function loadQuestion() {
+      fetch('http://localhost:3001/quiz/image')
+        .then(r => r.json())
+        .then(data => {
+          current = data;
+          round++;
+          roundEl.textContent = round;
+          resultEl.textContent = '';
+
+
+          // 문제 화면 렌더
+          imageBox.innerHTML = `<img src="${data.img}" alt="animal">`;
+          optionsEl.innerHTML = '';
+          data.options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.textContent = opt;
+            btn.addEventListener('click', () => choose(opt));
+            optionsEl.appendChild(btn);
+          });
+          canAnswer = true;
+
+
+          // 마지막 문제 이후 버튼 문구 변경
+          if (round === TOTAL_ROUNDS) {
+            nextBtn.textContent = '결과 보기';
+          } else {
+            nextBtn.textContent = '다음 문제';
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          resultEl.textContent = '문제를 불러오지 못했습니다.';
+          resultEl.className = 'status bad';
+        });
+    }
+
+
+    function choose(opt) {
+      if (!canAnswer) return;
+      canAnswer = false;
+
+
+      if (opt === current.answer) {
+        score++;
+        scoreEl.textContent = score;
+        resultEl.textContent = '정답입니다.';
+        resultEl.className = 'status ok';
+      } else {
+        resultEl.textContent = `오답입니다. 정답: ${current.answer}`;
+        resultEl.className = 'status bad';
+      }
+
+
+      // 모든 문제가 끝났을 때 결과 메시지
+      if (round === TOTAL_ROUNDS) {
+        setTimeout(() => {
+          resultEl.textContent = `퀴즈 종료 — 점수: ${score}/${TOTAL_ROUNDS}`;
+        }, 200);
+      }
+    }
+
+
+    // 기존 소리 API 테스트(참고용)
+    function getSound() {
+      const name = document.getElementById('name').value;
+      fetch(`http://localhost:3001/sound/${name}`)
+        .then((response) => response.json())
+        .then((data) => {
+          document.getElementById('sound').innerHTML = data.sound || '';
+          if (data.img) {
+            document.getElementById('imgFromSound').innerHTML =
+              `<img src="${data.img}" alt="${name}" width="300">`;
+          } else {
+            document.getElementById('imgFromSound').innerHTML = '';
+          }
+        });
+    }
+  </script>
+</body>
+</html>
+
+
+
