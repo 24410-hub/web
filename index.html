@@ -1,184 +1,729 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>동물 소리/이미지 퀴즈</title>
-  <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; }
-    .row { margin: 12px 0; }
-    #imageBox img { max-width: 100%; height: auto; border-radius: 12px; }
-    .options { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 12px; }
-    button { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; background: #fff; }
-    button:hover { background: #f5f5f5; }
-    .status { margin-top: 12px; min-height: 24px; font-weight: 600; }
-    .ok { color: #0a7a2f; }
-    .bad { color: #b00020; }
-    .pill { display:inline-block; padding: 4px 10px; border:1px solid #eee; border-radius:20px; margin-right:8px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고전 로그라이크 RPG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 고전 로그라이크 느낌을 위한 폰트 및 스타일 */
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+        
+        :root {
+            --color-bg: #1e1e1e;
+            --color-text: #e0e0e0;
+            --color-accent: #10b981; /* 에메랄드 그린 */
+            --color-red: #ef4444;
+        }
+
+        body {
+            font-family: 'VT323', monospace;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.25;
+            letter-spacing: 0.05em;
+            font-size: 1.25rem; /* 기본 글자 크기 증가 */
+        }
+
+        .rogue-screen {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .rogue-box {
+            background-color: #2c2c2c;
+            border: 2px solid var(--color-accent);
+            padding: 2rem;
+            border-radius: 4px;
+            box-shadow: 0 0 10px var(--color-accent);
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .cursor {
+            color: var(--color-accent);
+        }
+        
+        /* 상태창 오버레이 스타일 */
+        #status-overlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 3px solid var(--color-text);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        /* 맵 디스플레이 스타일 */
+        #game-map {
+            white-space: pre;
+            overflow: hidden;
+            border: 1px dashed var(--color-text);
+            padding: 0.5rem;
+            margin-top: 1rem;
+            max-height: 50vh;
+            min-height: 40vh;
+            width: 100%;
+            font-size: 0.8rem; /* 맵은 촘촘하게 */
+            line-height: 1.1;
+        }
+
+        /* 특수 색상 */
+        .symbol-player { color: var(--color-accent); font-weight: bold; }
+        .symbol-boss { color: var(--color-red); font-weight: bold; }
+        .symbol-wall { color: #888; }
+        .symbol-item { color: #facc15; }
+        .symbol-stairs { color: #3b82f6; }
+    </style>
 </head>
-<body>
-  <h1>동물 이미지 퀴즈</h1>
+<body class="selection:bg-gray-700">
 
+    <!-- 메인 컨테이너 -->
+    <div id="game-container" class="rogue-screen">
 
-  <div class="row">
-    <span class="pill">점수: <span id="score">0</span></span>
-    <span class="pill">문제: <span id="round">0</span>/<span id="total">5</span></span>
-  </div>
+        <!-- 메인 메뉴 화면 -->
+        <div id="main-menu" class="rogue-box text-center">
+            <h1 class="text-4xl mb-8 font-bold text-white">**고전 로그라이크**</h1>
+            <div id="main-menu-options" class="space-y-4 text-2xl">
+                <div class="menu-option" data-action="start">
+                    <span class="cursor">></span> 시작
+                </div>
+                <div class="menu-option" data-action="hallOfFame">
+                    명예의 전당 (미구현)
+                </div>
+            </div>
+            <p class="text-xs mt-8 text-gray-400">방향키 W/S 또는 위/아래로 이동 후 Enter</p>
+        </div>
 
+        <!-- 캐릭터 생성 화면 -->
+        <div id="char-creation" class="rogue-box hidden">
+            <h2 class="text-3xl mb-6 font-bold text-white text-center">**새 캐릭터 생성**</h2>
+            <div id="creation-fields" class="space-y-4">
+                <div class="field-item" data-field="name" data-type="text">
+                    이름 - <input type="text" id="char-name" value="모험가" class="bg-gray-800 border border-gray-600 rounded p-1 ml-2 focus:outline-none focus:border-green-400 text-white font-mono text-xl w-32">
+                </div>
+                <div class="field-item" data-field="gender" data-type="select" data-options="남자,여자">
+                    성별 - <span class="select-value ml-2 text-xl">남자</span>
+                </div>
+                <div class="field-item" data-field="weapon" data-type="select" data-options="검,단검,둔기,활,마법 무기">
+                    주무기 - <span class="select-value ml-2 text-xl">검</span>
+                </div>
+                <div class="field-item" data-field="race" data-type="select" data-options="인간,엘프,바바리안">
+                    종족 - <span class="select-value ml-2 text-xl">인간</span>
+                </div>
+            </div>
 
-  <div class="row">
-    <button id="startBtn">퀴즈 시작</button>
-    <button id="nextBtn" style="display:none">다음 문제</button>
-  </div>
+            <div id="race-desc" class="mt-6 p-4 text-sm border border-gray-700 bg-gray-800">
+                <!-- 종족 설명이 여기에 표시됩니다 -->
+            </div>
 
+            <div id="creation-start" class="field-item mt-6 text-center text-2xl font-bold" data-action="startGame">
+                <span class="cursor">></span> 모험 시작!
+            </div>
+            <p class="text-xs mt-4 text-gray-400 text-center">W/S 또는 방향키로 이동, A/D 또는 좌/우로 값 변경, Enter로 시작</p>
+        </div>
+        
+        <!-- 던전 화면 -->
+        <div id="dungeon-screen" class="rogue-box hidden flex flex-col items-start w-full max-w-4xl">
+            <div id="game-stats" class="text-sm w-full grid grid-cols-4 gap-2 mb-2 border-b border-gray-700 pb-2">
+                <div>**이름:** <span id="gs-name"></span></div>
+                <div>**Lv:** <span id="gs-lv">1</span></div>
+                <div>**HP:** <span id="gs-hp"></span>/<span id="gs-maxhp"></span></div>
+                <div>**층:** <span id="gs-floor">1</span>F</div>
+                <div>**갈증:** <span id="gs-thirst"></span>%</div>
+                <div>**배고픔:** <span id="gs-hunger"></span>%</div>
+                <div>**골드:** <span id="gs-gold">0</span></div>
+                <div>**화살:** <span id="gs-arrows">0</span></div>
+            </div>
+            
+            <pre id="game-map" class="text-white"></pre>
 
-  <div id="quizArea" style="display:none">
-    <div id="imageBox" class="row"></div>
-    <div id="options" class="options"></div>
-    <div id="result" class="status"></div>
-  </div>
+            <div id="game-log" class="w-full mt-4 h-24 overflow-y-auto bg-gray-800 p-2 text-sm">
+                <p class="text-green-400">--- **로그라이크 세계에 오신 것을 환영합니다!** ---</p>
+            </div>
+        </div>
+    </div>
 
+    <!-- 상태창 오버레이 -->
+    <div id="status-overlay" class="rogue-box hidden">
+        <h2 class="text-3xl mb-4 text-center font-bold border-b border-gray-600 pb-2 text-white">**캐릭터 상태** (TAB)</h2>
+        <div class="grid grid-cols-2 gap-6">
+            <!-- 좌측: 기본 정보 및 스탯 -->
+            <div id="status-info">
+                <p><strong>**이름:**</strong> <span id="st-name"></span></p>
+                <p><strong>**Lv:**</strong> <span id="st-lv"></span></p>
+                <p><strong>**HP:**</strong> <span id="st-hp"></span>/<span id="st-maxhp"></span></p>
+                <p><strong>**갈증:**</strong> <span id="st-thirst"></span>%</p>
+                <p><strong>**배고픔:**</strong> <span id="st-hunger"></span>%</p>
+                <p><strong>**성별:**</strong> <span id="st-gender"></span></p>
+                <p><strong>**종족:**</strong> <span id="st-race"></span></p>
+                <hr class="my-3 border-gray-600">
+                <p><strong>**근력 (STR):**</strong> <span id="st-str"></span></p>
+                <p><strong>**민첩 (DEX):**</strong> <span id="st-dex"></span></p>
+                <p><strong>**방어 (DEF):**</strong> <span id="st-def"></span></p>
+                <p><strong>**마력 (MAG):**</strong> <span id="st-mag"></span></p>
+            </div>
 
-  <hr class="row"/>
+            <!-- 우측: 장비 및 인벤토리 -->
+            <div id="status-equipment">
+                <p class="text-lg font-bold border-b border-gray-600 mb-2">**장비**</p>
+                <p><strong>**머리:**</strong> <span id="eq-head" class="text-gray-400">(없음)</span></p>
+                <p><strong>**몸:**</strong> <span id="eq-body" class="text-gray-400">(없음)</span></p>
+                <p><strong>**주무기:**</strong> <span id="eq-weapon" class="text-gray-400">(없음)</span></p>
+                <hr class="my-3 border-gray-600">
+                <p class="text-lg font-bold mb-1">**심장 정수 (3 슬롯)**</p>
+                <div id="eq-heart" class="space-y-1">
+                    <p class="text-gray-400">- (비어있음)</p>
+                    <p class="text-gray-400">- (비어있음)</p>
+                    <p class="text-gray-400">- (비어있음)</p>
+                </div>
+                <p class="text-lg font-bold mt-3 mb-1">**손가락 반지 (4 슬롯)**</p>
+                <div id="eq-finger" class="space-y-1">
+                    <p class="text-gray-400">- (비어있음)</p>
+                    <p class="text-gray-400">- (비어있음)</p>
+                    <p class="text-gray-400">- (비어있음)</p>
+                    <p class="text-gray-400">- (비어있음)</p>
+                </div>
+            </div>
+        </div>
 
+        <div id="status-inventory" class="mt-6 border-t border-gray-600 pt-4">
+            <p class="text-lg font-bold border-b border-gray-600 mb-2">**인벤토리** (기본 6칸 + 가방)</p>
+            <div id="inv-list" class="grid grid-cols-4 sm:grid-cols-6 gap-2 text-sm">
+                <!-- 인벤토리 아이템이 여기에 표시됩니다 -->
+            </div>
+            <p class="mt-4"><strong>**화살 보유량:**</strong> <span id="st-arrows-count">0</span></p>
+            <p><strong>**골드 보유량:**</strong> <span id="st-gold-count">0</span></p>
+        </div>
+    </div>
 
-  <h2>소리 API 테스트</h2>
-  <div class="row">
-    <input id="name" type="text" placeholder="dog / cat / pig"/>
-    <button onclick="getSound()">API 요청</button>
-  </div>
-  <h3 id="sound"></h3>
-  <div id="imgFromSound"></div>
+<script type="module">
+    //========================================================================================
+    // 1. 데이터 정의 (아이템, 몬스터, 종족 등)
+    //========================================================================================
 
+    // 종족별 기본 스탯 및 특성
+    const RACES = {
+        '인간': {
+            description: "모든 스텟 +1, HP 25% 이하일 때 추가 데미지 + 2",
+            baseStats: { str: 1, dex: 1, def: 1, mag: 1 },
+            special: (player) => player.stats.hp / player.stats.maxHp <= 0.25 ? "추가 데미지 +2" : ""
+        },
+        '엘프': {
+            description: "민첩 스텟 +5, 활 종류 무기의 사거리 + 1",
+            baseStats: { str: 0, dex: 5, def: 0, mag: 0 },
+            special: "활 사거리 +1"
+        },
+        '바바리안': {
+            description: "HP + 8, 힘 +5, 가끔씩 움직이는데 2턴 소모(낮은 확률), 마법 사용 불가",
+            baseStats: { str: 5, dex: 0, def: 0, mag: -999 }, // 마력 -999로 마법 불가 표현
+            baseHp: 8,
+            special: "가끔 2턴 소모 이동"
+        },
+    };
 
-  <script>
-    const TOTAL_ROUNDS = 5;
-    document.getElementById('total').textContent = TOTAL_ROUNDS;
+    // 아이템 및 장비 데이터 (간략화)
+    const ITEMS = {
+        // 무기: 검
+        '낡은 나무검': { type: 'weapon', slot: 'weapon', damage: 1, effect: '35% 주변 공격' },
+        '철검': { type: 'weapon', slot: 'weapon', damage: 2.5, effect: '35% 주변 공격' },
+        // 무기: 단검
+        '철단검': { type: 'weapon', slot: 'weapon', damage: 1.6, effect: '35% 2회 행동' },
+        // 무기: 둔기
+        '철 망지': { type: 'weapon', slot: 'weapon', damage: 2.7, effect: '25% 마비' },
+        // 무기: 활
+        '나무 활': { type: 'weapon', slot: 'weapon', damage: 12, arrowDamage: 1, effect: '화살 필요' },
+        // 방어구: 머리
+        '가죽 투구': { type: 'armor', slot: 'head', defense: 1 },
+        '철 투구': { type: 'armor', slot: 'head', defense: 3 },
+        // 방어구: 몸통
+        '가죽 갑옷': { type: 'armor', slot: 'body', defense: 3 },
+        '철 갑옷': { type: 'armor', slot: 'body', defense: 5 },
+        // 반지
+        '힘 반지': { type: 'ring', slot: 'finger', stats: { str: 4 } },
+        // 정수 (Essences)
+        '박쥐 정수 (9급)': { type: 'essence', slot: 'heart', stats: { dex: 3, def: -4 }, effect: '민첩 +3, 방어력 -4' },
+        '고블린 정수 (8급)': { type: 'essence', slot: 'heart', stats: { def: 3, str: 2, dex: -4 }, effect: '방어력 +3, 데미지 +2, 민첩 -4' },
+        // 소모품
+        '빵': { type: 'consumable', hunger: 40, effect: '배고픔 40 회복' },
+        '물': { type: 'consumable', thirst: 40, effect: '갈증 40 회복' },
+        '붕대': { type: 'consumable', hpPercent: 0.3, effect: 'HP 30% 회복' },
+        '힘 물약': { type: 'consumable', stats: { str: 1 }, effect: '힘 1 증가' },
+    };
 
+    const MONSTERS = {
+        '박쥐': { symbol: 'B', hp: 5, damage: 2, dex: 5, essence: '박쥐 정수 (9급)', dropRate: 0.1 },
+        '고블린': { symbol: 'G', hp: 7, damage: 3, dex: 1, essence: '고블린 정수 (8급)', dropRate: 0.1 },
+        '오크': { symbol: 'O', hp: 40, damage: 8, dex: 0, special: '2턴당 1행동', isBoss: true, essence: '오크 정수 (6급)', dropRate: 0.1 },
+        '뱀파이어': { symbol: 'V', hp: 40, damage: 10, dex: 19, isSpecialBoss: true, essence: '뱀파이어 정수 (4급)', dropRate: 0.45 },
+    }
 
-    let current = null;  // { img, options, answer }
-    let canAnswer = false;
-    let score = 0;
-    let round = 0;
+    // 초기 게임 상태
+    let gameState = {
+        screen: 'mainMenu', // mainMenu, charCreation, dungeon
+        player: null,
+        creationCursor: 0,
+        mainMenuCursor: 0,
+        map: [],
+        playerPos: { x: 0, y: 0 },
+        floor: 1,
+        isStatusOpen: false,
+        inventory: Array(6).fill(null), // 기본 6칸
+        equipment: {
+            head: null,
+            body: null,
+            weapon: null,
+            heart: Array(3).fill(null),
+            finger: Array(4).fill(null),
+        }
+    };
 
+    //========================================================================================
+    // 2. UI 및 화면 관리
+    //========================================================================================
 
-    const startBtn = document.getElementById('startBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const quizArea = document.getElementById('quizArea');
-    const imageBox = document.getElementById('imageBox');
-    const optionsEl = document.getElementById('options');
-    const resultEl = document.getElementById('result');
-    const scoreEl = document.getElementById('score');
-    const roundEl = document.getElementById('round');
+    function showScreen(screenId) {
+        document.getElementById('main-menu').classList.add('hidden');
+        document.getElementById('char-creation').classList.add('hidden');
+        document.getElementById('dungeon-screen').classList.add('hidden');
+        document.getElementById('status-overlay').classList.add('hidden');
 
+        if (screenId === 'mainMenu') {
+            document.getElementById('main-menu').classList.remove('hidden');
+            gameState.screen = 'mainMenu';
+        } else if (screenId === 'charCreation') {
+            document.getElementById('char-creation').classList.remove('hidden');
+            gameState.screen = 'charCreation';
+            updateCreationUI(); // UI 초기화 및 커서 설정
+        } else if (screenId === 'dungeon') {
+            document.getElementById('dungeon-screen').classList.remove('hidden');
+            gameState.screen = 'dungeon';
+            // 게임 시작 시 상태창 업데이트 및 맵 렌더링
+            updateGameStatsUI();
+            renderMap();
+        }
+    }
 
-    startBtn.addEventListener('click', () => {
-      score = 0; round = 0;
-      scoreEl.textContent = score;
-      roundEl.textContent = round;
-      startBtn.style.display = 'none';
-      nextBtn.style.display = 'inline-block';
-      quizArea.style.display = 'block';
-      loadQuestion();
-    });
+    // 캐릭터 생성 UI 업데이트
+    function updateCreationUI() {
+        const items = Array.from(document.querySelectorAll('#char-creation .field-item'));
+        items.forEach((item, index) => {
+            // 커서 표시/제거
+            const cursorSpan = item.querySelector('.cursor');
+            if (cursorSpan) {
+                cursorSpan.remove();
+            }
+            if (index === gameState.creationCursor) {
+                if (item.dataset.action === 'startGame') {
+                    item.innerHTML = `<span class="cursor">></span> ${item.textContent.trim()}`;
+                } else {
+                    item.querySelector('.select-value, input').classList.add('cursor');
+                }
+            } else {
+                const selectedElement = item.querySelector('.select-value, input');
+                if (selectedElement) selectedElement.classList.remove('cursor');
+            }
+        });
 
+        // 종족 설명 업데이트
+        const selectedRace = items.find((_, i) => i === 3).querySelector('.select-value').textContent;
+        const raceData = RACES[selectedRace];
+        document.getElementById('race-desc').innerHTML = `
+            <p><strong>[${selectedRace}]</strong></p>
+            <p>${raceData.description}</p>
+        `;
+    }
 
-    nextBtn.addEventListener('click', () => {
-      if (round >= TOTAL_ROUNDS) {
-        // 게임 리셋
-        startBtn.style.display = 'inline-block';
-        nextBtn.style.display = 'none';
-        quizArea.style.display = 'none';
-        resultEl.textContent = '';
-        imageBox.innerHTML = '';
-        optionsEl.innerHTML = '';
-        return;
-      }
-      loadQuestion();
-    });
+    // 던전 화면 상단 스탯 업데이트
+    function updateGameStatsUI() {
+        if (!gameState.player) return;
+        const p = gameState.player.stats;
+        document.getElementById('gs-name').textContent = gameState.player.name;
+        document.getElementById('gs-lv').textContent = p.level;
+        document.getElementById('gs-hp').textContent = Math.max(0, p.hp);
+        document.getElementById('gs-maxhp').textContent = p.maxHp;
+        document.getElementById('gs-thirst').textContent = p.thirst;
+        document.getElementById('gs-hunger').textContent = p.hunger;
+        document.getElementById('gs-gold').textContent = p.gold;
+        document.getElementById('gs-arrows').textContent = p.arrows;
+        document.getElementById('gs-floor').textContent = gameState.floor;
+    }
 
+    // 상태창 (TAB) 업데이트
+    function updateStatusOverlay() {
+        if (!gameState.player) return;
+        const p = gameState.player.stats;
+        const player = gameState.player;
+        
+        // 기본 정보 및 스탯
+        document.getElementById('st-name').textContent = player.name;
+        document.getElementById('st-lv').textContent = p.level;
+        document.getElementById('st-hp').textContent = Math.max(0, p.hp);
+        document.getElementById('st-maxhp').textContent = p.maxHp;
+        document.getElementById('st-thirst').textContent = p.thirst;
+        document.getElementById('st-hunger').textContent = p.hunger;
+        document.getElementById('st-gender').textContent = player.gender;
+        document.getElementById('st-race').textContent = player.race;
 
-    function loadQuestion() {
-      fetch('http://localhost:3001/quiz/image')
-        .then(r => r.json())
-        .then(data => {
-          current = data;
-          round++;
-          roundEl.textContent = round;
-          resultEl.textContent = '';
+        document.getElementById('st-str').textContent = p.str;
+        document.getElementById('st-dex').textContent = p.dex;
+        document.getElementById('st-def').textContent = p.def;
+        document.getElementById('st-mag').textContent = p.mag;
 
+        // 장비
+        document.getElementById('eq-head').textContent = gameState.equipment.head ? gameState.equipment.head.name : '(없음)';
+        document.getElementById('eq-body').textContent = gameState.equipment.body ? gameState.equipment.body.name : '(없음)';
+        document.getElementById('eq-weapon').textContent = gameState.equipment.weapon ? gameState.equipment.weapon.name : '(없음)';
+        
+        // 심장 정수
+        const heartEl = document.getElementById('eq-heart');
+        heartEl.innerHTML = gameState.equipment.heart.map(e => 
+            `<p class="${e ? 'text-white' : 'text-gray-400'}">- ${e ? e.name : '(비어있음)'}</p>`
+        ).join('');
 
-          // 문제 화면 렌더
-          imageBox.innerHTML = `<img src="${data.img}" alt="animal">`;
-          optionsEl.innerHTML = '';
-          data.options.forEach(opt => {
-            const btn = document.createElement('button');
-            btn.textContent = opt;
-            btn.addEventListener('click', () => choose(opt));
-            optionsEl.appendChild(btn);
-          });
-          canAnswer = true;
+        // 손가락 반지
+        const fingerEl = document.getElementById('eq-finger');
+        fingerEl.innerHTML = gameState.equipment.finger.map(r => 
+            `<p class="${r ? 'text-white' : 'text-gray-400'}">- ${r ? r.name : '(비어있음)'}</p>`
+        ).join('');
+        
+        // 인벤토리
+        const invListEl = document.getElementById('inv-list');
+        // 인벤토리는 최대 크기(기본 6 + 모험가의 가방)를 고려해야 하지만, 일단 기본 6칸만 표시
+        invListEl.innerHTML = gameState.inventory.map((item, index) => 
+            `<div class="p-2 border border-gray-700 bg-gray-900 rounded-sm hover:bg-gray-700 transition duration-150">${item ? item.name : '(빈칸)'}</div>`
+        ).join('');
 
+        document.getElementById('st-arrows-count').textContent = p.arrows;
+        document.getElementById('st-gold-count').textContent = p.gold;
 
-          // 마지막 문제 이후 버튼 문구 변경
-          if (round === TOTAL_ROUNDS) {
-            nextBtn.textContent = '결과 보기';
-          } else {
-            nextBtn.textContent = '다음 문제';
-          }
-        })
-        .catch(err => {
-          console.error(err);
-          resultEl.textContent = '문제를 불러오지 못했습니다.';
-          resultEl.className = 'status bad';
+        gameState.isStatusOpen = true;
+        document.getElementById('status-overlay').classList.remove('hidden');
+    }
+
+    function toggleStatusOverlay() {
+        if (gameState.screen !== 'dungeon') return;
+        if (gameState.isStatusOpen) {
+            gameState.isStatusOpen = false;
+            document.getElementById('status-overlay').classList.add('hidden');
+        } else {
+            updateStatusOverlay();
+        }
+    }
+
+    //========================================================================================
+    // 3. 게임 로직 및 초기화
+    //========================================================================================
+    
+    // 단순화된 맵 생성 (21x21 크기)
+    function generateSimpleMap() {
+        const mapSize = 21;
+        let map = Array(mapSize).fill(0).map(() => Array(mapSize).fill('#')); // 전부 벽
+        
+        // 중앙에 뚫린 공간 생성
+        for (let y = 1; y < mapSize - 1; y++) {
+            for (let x = 1; x < mapSize - 1; x++) {
+                map[y][x] = '.';
+            }
+        }
+        
+        // 랜덤하게 몬스터와 아이템 배치
+        for (let i = 0; i < 5; i++) { // 몬스터 5마리
+            const y = Math.floor(Math.random() * (mapSize - 2)) + 1;
+            const x = Math.floor(Math.random() * (mapSize - 2)) + 1;
+            if (map[y][x] === '.') {
+                const monsterList = Object.keys(MONSTERS).filter(name => !MONSTERS[name].isBoss && !MONSTERS[name].isSpecialBoss);
+                const randomMonsterName = monsterList[Math.floor(Math.random() * monsterList.length)];
+                map[y][x] = MONSTERS[randomMonsterName].symbol;
+            }
+        }
+
+        // 아이템 2개
+        for (let i = 0; i < 2; i++) {
+            const y = Math.floor(Math.random() * (mapSize - 2)) + 1;
+            const x = Math.floor(Math.random() * (mapSize - 2)) + 1;
+            if (map[y][x] === '.') {
+                map[y][x] = '%'; // 아이템
+            }
+        }
+
+        // 플레이어 시작 위치 (중앙)
+        gameState.playerPos = { x: 10, y: 10 };
+        map[gameState.playerPos.y][gameState.playerPos.x] = '@';
+        
+        // 계단 배치
+        map[mapSize - 2][mapSize - 2] = '$';
+
+        gameState.map = map;
+    }
+
+    // 맵 렌더링
+    function renderMap() {
+        const mapEl = document.getElementById('game-map');
+        const mapHtml = gameState.map.map((row, y) => 
+            row.map((cell, x) => {
+                let symbol = cell;
+                let className = '';
+
+                if (symbol === '#') className = 'symbol-wall';
+                else if (symbol === '@') className = 'symbol-player';
+                else if (symbol === '%') className = 'symbol-item';
+                else if (symbol === '$') className = 'symbol-stairs';
+                else if (symbol !== '.' && symbol !== ' ') {
+                    // 몬스터 심볼 (B, G, O, V 등)
+                    const isBoss = Object.values(MONSTERS).some(m => m.symbol === symbol && (m.isBoss || m.isSpecialBoss));
+                    className = isBoss ? 'symbol-boss' : 'text-gray-400';
+                }
+
+                return `<span class="${className}">${symbol}</span>`;
+            }).join('')
+        ).join('\n');
+        mapEl.innerHTML = mapHtml;
+    }
+
+    // 로그 메시지 추가
+    function logMessage(message, color = 'text-white') {
+        const logEl = document.getElementById('game-log');
+        const p = document.createElement('p');
+        p.className = color;
+        p.textContent = message;
+        logEl.prepend(p); // 최신 메시지가 위로
+        // 50줄까지만 유지
+        while (logEl.children.length > 50) {
+            logEl.removeChild(logEl.lastChild);
+        }
+    }
+
+    // 캐릭터 초기 스탯 설정
+    function createPlayer(name, gender, race, weapon) {
+        const raceData = RACES[race];
+        let baseHp = 20 + (raceData.baseHp || 0);
+
+        gameState.player = {
+            name: name,
+            gender: gender,
+            race: race,
+            mainWeaponType: weapon,
+            stats: {
+                level: 1,
+                hp: baseHp,
+                maxHp: baseHp,
+                thirst: 100, // 0~100
+                hunger: 100, // 0~100
+                str: 5 + raceData.baseStats.str,
+                dex: 5 + raceData.baseStats.dex,
+                def: 5 + raceData.baseStats.def,
+                mag: 5 + raceData.baseStats.mag,
+                gold: 0,
+                arrows: 5, // 시작 화살
+            },
+        };
+        // 시작 아이템 지급 (예시)
+        if (ITEMS[weapon]) {
+            gameState.equipment.weapon = { name: weapon, ...ITEMS[weapon] };
+        } else {
+             // 주무기 타입에 맞는 기본 무기 지급
+             if(weapon === '검') gameState.equipment.weapon = { name: '낡은 나무검', ...ITEMS['낡은 나무검'] };
+             else if(weapon === '단검') gameState.equipment.weapon = { name: '낡은 나무단검', ...ITEMS['낡은 나무단검'] };
+             // 다른 무기 타입은 생략...
+        }
+
+        logMessage(`캐릭터 생성 완료: ${name} (${race})로 모험을 시작합니다.`, 'text-yellow-400');
+        generateSimpleMap();
+        showScreen('dungeon');
+    }
+
+    //========================================================================================
+    // 4. 입력 처리
+    //========================================================================================
+
+    function handleMainMenuInput(key) {
+        const options = document.querySelectorAll('#main-menu-options .menu-option');
+        if (key === 'ArrowUp' || key === 'w') {
+            gameState.mainMenuCursor = (gameState.mainMenuCursor - 1 + options.length) % options.length;
+        } else if (key === 'ArrowDown' || key === 's') {
+            gameState.mainMenuCursor = (gameState.mainMenuCursor + 1) % options.length;
+        } else if (key === 'Enter') {
+            const action = options[gameState.mainMenuCursor].dataset.action;
+            if (action === 'start') {
+                showScreen('charCreation');
+            } else if (action === 'hallOfFame') {
+                logMessage('명예의 전당은 아직 준비 중입니다.');
+            }
+        }
+        options.forEach((opt, i) => {
+            opt.innerHTML = (i === gameState.mainMenuCursor ? '<span class="cursor">></span> ' : '') + opt.textContent.replace('>', '').trim();
         });
     }
 
+    function handleCharCreationInput(key) {
+        const items = Array.from(document.querySelectorAll('#char-creation .field-item'));
+        const totalItems = items.length;
+        const currentItem = items[gameState.creationCursor];
+        const fieldType = currentItem.dataset.type;
 
-    function choose(opt) {
-      if (!canAnswer) return;
-      canAnswer = false;
+        if (key === 'ArrowUp' || key === 'w') {
+            gameState.creationCursor = (gameState.creationCursor - 1 + totalItems) % totalItems;
+        } else if (key === 'ArrowDown' || key === 's') {
+            gameState.creationCursor = (gameState.creationCursor + 1) % totalItems;
+        } else if (key === 'Enter') {
+            if (currentItem.dataset.action === 'startGame') {
+                const name = document.getElementById('char-name').value;
+                const gender = items.find(i => i.dataset.field === 'gender').querySelector('.select-value').textContent;
+                const weapon = items.find(i => i.dataset.field === 'weapon').querySelector('.select-value').textContent;
+                const race = items.find(i => i.dataset.field === 'race').querySelector('.select-value').textContent;
+                
+                createPlayer(name, gender, race, weapon);
+                return;
+            }
+        }
 
+        // Select 필드 값 변경 (좌우 또는 A/D)
+        if (fieldType === 'select' && (key === 'ArrowLeft' || key === 'a' || key === 'ArrowRight' || key === 'd')) {
+            const options = currentItem.dataset.options.split(',');
+            const currentValue = currentItem.querySelector('.select-value').textContent;
+            let currentIndex = options.indexOf(currentValue);
 
-      if (opt === current.answer) {
-        score++;
-        scoreEl.textContent = score;
-        resultEl.textContent = '정답입니다.';
-        resultEl.className = 'status ok';
-      } else {
-        resultEl.textContent = `오답입니다. 정답: ${current.answer}`;
-        resultEl.className = 'status bad';
-      }
+            if (key === 'ArrowRight' || key === 'd') {
+                currentIndex = (currentIndex + 1) % options.length;
+            } else if (key === 'ArrowLeft' || key === 'a') {
+                currentIndex = (currentIndex - 1 + options.length) % options.length;
+            }
+            currentItem.querySelector('.select-value').textContent = options[currentIndex];
+        } else if (fieldType === 'text' && key !== 'Enter') {
+            // 텍스트 입력 필드는 기본 브라우저 동작에 맡기고 커서 위치만 재조정
+            document.getElementById('char-name').focus();
+        }
 
-
-      // 모든 문제가 끝났을 때 결과 메시지
-      if (round === TOTAL_ROUNDS) {
-        setTimeout(() => {
-          resultEl.textContent = `퀴즈 종료 — 점수: ${score}/${TOTAL_ROUNDS}`;
-        }, 200);
-      }
+        updateCreationUI();
     }
 
+    function handleDungeonInput(key) {
+        if (gameState.isStatusOpen) {
+            if (key === 'Tab') {
+                toggleStatusOverlay();
+            }
+            return;
+        }
 
-    // 기존 소리 API 테스트(참고용)
-    function getSound() {
-      const name = document.getElementById('name').value;
-      fetch(`http://localhost:3001/sound/${name}`)
-        .then((response) => response.json())
-        .then((data) => {
-          document.getElementById('sound').innerHTML = data.sound || '';
-          if (data.img) {
-            document.getElementById('imgFromSound').innerHTML =
-              `<img src="${data.img}" alt="${name}" width="300">`;
-          } else {
-            document.getElementById('imgFromSound').innerHTML = '';
-          }
-        });
+        const dx = (key === 'ArrowRight' || key === 'd') ? 1 : (key === 'ArrowLeft' || key === 'a') ? -1 : 0;
+        const dy = (key === 'ArrowDown' || key === 's') ? 1 : (key === 'ArrowUp' || key === 'w') ? -1 : 0;
+        
+        if (dx === 0 && dy === 0) {
+            // 특수 키 처리
+            if (key === 'Tab') {
+                toggleStatusOverlay();
+            } else if (key === 'r') {
+                logMessage('화살 발사 준비 중...'); // R 키: 화살 발사
+            } else if (key === 'i') {
+                logMessage('인벤토리 상호작용 (미구현)...');
+            }
+            return;
+        }
+        
+        // 이동 로직
+        const newX = gameState.playerPos.x + dx;
+        const newY = gameState.playerPos.y + dy;
+        const targetCell = gameState.map[newY] ? gameState.map[newY][newX] : '#';
+
+        if (targetCell === '#') {
+            logMessage('벽입니다.', 'text-red-500');
+            return;
+        }
+
+        // 현재 위치를 '.'으로 되돌림
+        gameState.map[gameState.playerPos.y][gameState.playerPos.x] = '.'; 
+
+        // 상호작용
+        if (targetCell === '$') {
+            gameState.floor++;
+            logMessage(`${gameState.floor}층으로 내려갑니다!`, 'text-blue-400');
+            generateSimpleMap(); // 새 층 생성
+        } else if (targetCell === '%') {
+            // 아이템 획득 로직 (간단 구현)
+            const itemNames = ['빵', '물', '힘 물약', '철 검', '가죽 투구'];
+            const randomItemName = itemNames[Math.floor(Math.random() * itemNames.length)];
+            
+            // 인벤토리에 추가 (첫 번째 빈칸)
+            const emptySlotIndex = gameState.inventory.findIndex(slot => slot === null);
+            if (emptySlotIndex !== -1) {
+                gameState.inventory[emptySlotIndex] = ITEMS[randomItemName] || { name: randomItemName, type: 'unknown' };
+                logMessage(`${randomItemName}(을/를) 획득했습니다!`, 'text-yellow-400');
+            } else {
+                logMessage('인벤토리가 가득 찼습니다.');
+            }
+        } else if (targetCell !== '.') {
+            // 몬스터 심볼 (B, G, O 등)
+            // 전투 시작 (로직은 생략하고 로그만 표시)
+            logMessage(`[${targetCell}]을/를 공격합니다!`, 'text-red-500');
+            // 몬스터 HP 감소, 플레이어 HP 감소 등 전투 로직 필요
+            return; // 몬스터 칸으로 이동 불가
+        }
+
+        // 이동 완료
+        gameState.playerPos.x = newX;
+        gameState.playerPos.y = newY;
+        gameState.map[gameState.playerPos.y][gameState.playerPos.x] = '@'; // 새 위치에 플레이어 표시
+
+        // 턴 종료 (허기/갈증, 몬스터 턴 처리)
+        gameState.player.stats.thirst = Math.max(0, gameState.player.stats.thirst - 1);
+        gameState.player.stats.hunger = Math.max(0, gameState.player.stats.hunger - 1);
+
+        // 몬스터 턴 (미구현)
+        // moveMonsters(); 
+
+        renderMap();
+        updateGameStatsUI();
     }
-  </script>
-</body>
-</html>
+    
+    // 전체 키 입력 핸들러
+    document.addEventListener('keydown', (e) => {
+        const key = e.key;
 
+        // TAB 키는 항상 상태창 토글 (던전 화면에서만)
+        if (key === 'Tab' && gameState.screen === 'dungeon') {
+            e.preventDefault(); // 기본 탭 동작 방지
+            toggleStatusOverlay();
+            return;
+        }
 
+        // 상태창이 열려있으면 닫는 동작 외에는 입력을 받지 않음
+        if (gameState.isStatusOpen && key !== 'Tab') {
+            return;
+        }
+        
+        e.preventDefault(); // 게임 내 조작 키의 기본 동작 (스크롤 등) 방지
 
+        if (gameState.screen === 'mainMenu') {
+            handleMainMenuInput(key);
+        } else if (gameState.screen === 'charCreation') {
+            handleCharCreationInput(key);
+        } else if (gameState.screen === 'dungeon') {
+            handleDungeonInput(key.toLowerCase());
+        }
+    });
+
+    //========================================================================================
+    // 5. 초기 실행
+    //========================================================================================
+
+    // 메인 메뉴 초기 설정
+    document.addEventListener('DOMContentLoaded', () => {
+        showScreen('mainMenu');
+        
+        // 메인 메뉴 초기 커서 설정
+        const options = document.querySelectorAll('#main-menu-options .menu-option');
+        if (options.length > 0) {
+            options[0].innerHTML = '<span class="cursor">></span> ' + options[0].textContent.trim();
+        }
+    });
+</script>
