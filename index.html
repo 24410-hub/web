@@ -1,1409 +1,158 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>고전 로그라이크: 간격 조정 및 초기 화면 수정</title>
-    <!-- Tailwind CSS 로드 -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 폰트 설정 및 로그라이크 스타일 -->
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=VT323:wght@400;700&family=Inter:wght=400;700&display=swap');
-        
-        /* 전체 컨테이너는 터미널 스타일 */
-        body {
-            background-color: #0d1117; /* 어두운 배경 */
-            color: #d1d5db; /* 연한 회색 텍스트 */
-            font-family: 'Inter', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-        }
-
-        #game-container {
-            width: 100%;
-            max-width: 1400px; /* 가로 간격 확장 */
-            height: 80vh;
-            min-height: 600px;
-            background-color: #161b22; /* 살짝 밝은 터미널 창 */
-            border: 2px solid #30363d;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);
-            border-radius: 8px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .screen {
-            flex-grow: 1;
-            padding: 2rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .menu-item {
-            padding: 0.5rem 1rem;
-            margin: 0.5rem 0;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 1.5rem;
-            font-family: 'VT323', monospace;
-            border-radius: 4px;
-        }
-
-        .selected {
-            background-color: #30363d;
-            color: #00ff00; /* 강조 색상 */
-            text-shadow: 0 0 5px #00ff00;
-        }
-
-        /* 게임 화면 레이아웃 */
-        #game-view {
-            display: grid;
-            grid-template-columns: 3fr 1fr;
-            gap: 2rem; /* 간격 확장 */
-            padding: 2rem; /* 패딩 확장 */
-            align-items: flex-start;
-            justify-content: flex-start;
-            text-align: left;
-            height: 100%;
-        }
-
-        #map-area {
-            background-color: #0d1117;
-            padding: 1rem;
-            border-radius: 4px;
-            overflow: auto; 
-            white-space: pre;
-            font-family: 'VT323', monospace; 
-            /* 지도 비율 유지를 위한 CSS */
-            font-size: 1.2rem; 
-            line-height: 0.95; 
-            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
-            height: 100%; 
-        }
-
-        #info-panel {
-            padding: 1rem;
-            border: 1px dashed #30363d;
-            border-radius: 4px;
-            font-size: 0.875rem;
-            height: 100%; /* 부모에 맞춤 */
-            overflow-y: auto;
-        }
-
-        .stat-line {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.25rem;
-        }
-
-        /* 상태창 모달 */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: 99;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal {
-            width: 90%;
-            max-width: 800px; /* 상태창 너비 확장 */
-            max-height: 90%;
-            background-color: #161b22;
-            border: 2px solid #00ff00;
-            box-shadow: 0 0 30px rgba(0, 255, 0, 0.4);
-            border-radius: 12px;
-            padding: 2rem;
-            z-index: 100;
-            overflow-y: auto;
-        }
-
-        .modal-title {
-            font-size: 2.2rem;
-            font-family: 'VT323', monospace;
-            color: #00ff00;
-            text-shadow: 0 0 5px #00ff00;
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-        
-        /* 폰트 정렬을 위해 VT323 적용 */
-        #map-area span {
-            font-family: 'VT323', monospace;
-        }
-
-        /* FOG of WAR 관련 스타일 */
-        #map-area span.unknown {
-            color: #0d1117; 
-        }
-        #map-area span.unseen {
-            color: #30363d !important;
-        }
-        
-        /* 보스 몬스터 및 특별 심볼 색상 */
-        .boss-symbol {
-            color: #ff0000; 
-            text-shadow: 0 0 3px #ff0000;
-        }
-        .special-stairs {
-            color: #ff0000; 
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>동물 소리/이미지 퀴즈</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; }
+    .row { margin: 12px 0; }
+    #imageBox img { max-width: 100%; height: auto; border-radius: 12px; }
+    .options { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 12px; }
+    button { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; background: #fff; }
+    button:hover { background: #f5f5f5; }
+    .status { margin-top: 12px; min-height: 24px; font-weight: 600; }
+    .ok { color: #0a7a2f; }
+    .bad { color: #b00020; }
+    .pill { display:inline-block; padding: 4px 10px; border:1px solid #eee; border-radius:20px; margin-right:8px; }
+  </style>
 </head>
 <body>
-
-<div id="game-container">
-    
-    <!-- 1. 메인 화면 -->
-    <div id="main-menu" class="screen">
-        <h1 class="text-4xl font-bold mb-10 text-green-500 font-mono selected" style="text-shadow: 0 0 10px #00ff00;">
-            *** 고전 로그라이크 던전 ***
-        </h1>
-        <div id="menu-options" class="flex flex-col items-center">
-            <div id="menu-start" class="menu-item selected" data-action="start">
-                &gt; 시작 (Start)
-            </div>
-            <div id="menu-hall" class="menu-item" data-action="hall">
-                명예의 전당 (Hall of Fame) - 미구현
-            </div>
-            <div id="menu-levelup" class="menu-item text-xs" data-action="test-level">
-                (테스트: L 누르면 레벨업)
-            </div>
-        </div>
-    </div>
-
-    <!-- 2. 캐릭터 생성 화면 -->
-    <div id="char-creation" class="screen hidden">
-        <h2 class="text-3xl font-bold mb-8 text-green-400 font-mono">=== 캐릭터 생성 ===</h2>
-        <div class="flex flex-col items-start space-y-4 text-xl font-mono">
-            
-            <div class="flex items-center">
-                <span class="char-creation-label">이름</span>
-                <input type="text" id="player-name" value="모험가" class="bg-gray-700 text-green-300 p-2 border border-gray-600 rounded">
-            </div>
-
-            <div class="flex items-center">
-                <span class="char-creation-label">성별</span>
-                <span id="char-gender" class="char-creation-option selected" data-options="남자,여자" data-value="남자">&lt; 남자 &gt;</span>
-            </div>
-
-            <div class="flex items-center">
-                <span class="char-creation-label">주무기</span>
-                <span id="char-weapon" class="char-creation-option" data-options="검,단검,둔기,활,마법 무기" data-value="검">&lt; 검 &gt;</span>
-            </div>
-
-            <div class="flex items-center">
-                <span class="char-creation-label">종족</span>
-                <span id="char-race" class="char-creation-option" data-options="인간,엘프,바바리안" data-value="인간">&lt; 인간 &gt;</span>
-            </div>
-        </div>
-        
-        <div id="race-info" class="mt-6 p-4 border border-gray-600 rounded bg-gray-800 text-sm w-full max-w-md">
-            <!-- 종족 특성이 여기에 표시됩니다 -->
-        </div>
-
-        <button id="start-game-btn" class="menu-item mt-8 px-8 py-2 bg-green-700 hover:bg-green-600 rounded-lg text-white font-bold transition duration-150">
-            모험 시작 (ENTER)
-        </button>
-    </div>
-
-    <!-- 3. 게임 화면 (초기에는 숨김) -->
-    <div id="game-view" class="hidden">
-        <div id="map-area">
-            <!-- 맵은 JS에서 동적으로 렌더링 됩니다. -->
-        </div>
-        <div id="info-panel" class="font-mono">
-            <h3 class="text-xl font-bold text-yellow-400 mb-4">-- 던전 로그 --</h3>
-            <p id="log-message" class="text-sm text-gray-400 mt-2">
-                <!-- 로그 메시지는 JS에서 게임 시작 시 출력됩니다. -->
-            </p>
-        </div>
-    </div>
-    
-</div>
-
-<!-- 4. 상태창 모달 -->
-<div id="status-overlay" class="modal-overlay hidden">
-    <div id="status-modal" class="modal">
-        <!-- 상태창 모달 내용 -->
-    </div>
-</div>
-
-<script>
-    // 전역 변수 설정
-    const $ = id => document.getElementById(id);
-    let currentScreen = 'main-menu';
-    let selectedMenuItem = 0;
-    let selectedCharOption = 0;
-    let isStatusModalOpen = false;
-    let isArrowAiming = false; 
-
-    // 맵 상수 (동적 크기)
-    const MAP_BASE_WIDTH = 50;
-    const MAP_BASE_HEIGHT = 25;
-    const MAP_SIZE_INCREMENT = 1; 
-    const MAX_MAP_WIDTH = 100;
-    const MAX_MAP_HEIGHT = 50;
-    const BASE_HP = 20;
-    const BASE_MAG = 10;
-    const ARROW_RANGE = 5;
-
-
-    // 맵 생성에 사용될 헬퍼 함수
-    const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-    const randFloat = (min, max) => Math.random() * (max - min) + min;
-
-    // =========================================================================
-    // 1. 데이터 모델 정의
-    // =========================================================================
-
-    const RACES = {
-        '인간': { desc: '모든 스텟 +1, HP가 25% 이하라면 추가로 데미지 + 2', str: 1, dex: 1, def: 1, mag: 1, hp: 0 },
-        '엘프': { desc: '민첩 스텟 +5, 활 종류 무기의 사거리 + 1', str: 0, dex: 5, def: 0, mag: 0, hp: 0 },
-        '바바리안': { desc: 'HP + 8, 힘 +5, 가끔식 움직이는데 2턴이 소모됨, 마법을 사용할 수 없음.', str: 5, dex: 0, def: 0, mag: -999, hp: 8 }
-    };
-    
-    // 몬스터 심볼 정의 (정수 목록에 맞게 확장)
-    const MONSTER_SPECS = {
-        // 일반 몬스터 (Symbol: { name, hp, dmg, dex, floors, symbol, isBoss })
-        'B': { name: '박쥐', hp: 5, dmg: 2, dex: 5, floors: [[1, 5], [16, 20], [21, 30], [31, 50]], symbol: 'B' },
-        'G': { name: '고블린', hp: 7, dmg: 3, dex: 1, floors: [[1, 5], [11, 15], [31, 50]], symbol: 'G' },
-        'Z': { name: '좀비', hp: 5, dmg: 3, dex: 2, floors: [[6, 10], [16, 20], [31, 50]], symbol: 'Z' },
-        'S': { name: '거미', hp: 3, dmg: 2, dex: 3, floors: [[6, 10], [16, 20], [31, 50]], symbol: 'S' }, 
-        'W': { name: '늑대', hp: 5, dmg: 3, dex: 5, floors: [[11, 15], [21, 30], [31, 50]], symbol: 'W' },
-        'H': { name: '하피', hp: 25, dmg: 4, dex: 10, floors: [[21, 30]], symbol: 'H' },
-        'D': { name: '듀라한', hp: 35, dmg: 10, dex: 12, floors: [[31, 50]], symbol: 'D' },
-
-        // 보스 (isBoss: true)
-        'O': { name: '오크 (5F Boss)', hp: 40, dmg: 8, dex: 0, isBoss: true, floor: 5, symbol: 'O' },
-        'P': { name: '하피 (10F Boss)', hp: 25, dmg: 4, dex: 10, isBoss: true, floor: 10, symbol: 'H' }, // 하피는 이미 정의되었지만 보스로서 재정의 (심볼 충돌을 피하기 위해 P로 대체 가능)
-        'M': { name: '메두사 (15F Boss)', hp: 30, dmg: 8, dex: 4, isBoss: true, floor: 15, symbol: 'M' },
-        'A': { name: '아라크네 (20F Boss)', hp: 70, dmg: 15, dex: 15, isBoss: true, floor: 20, symbol: 'A' },
-        'K': { name: '참수자 오니 (30F Boss)', hp: 90, dmg: 15, dex: 20, isBoss: true, floor: 30, symbol: 'O' }, 
-        'Y': { name: '예티 (50F Boss)', hp: 120, dmg: 20, dex: 0, isBoss: true, floor: 50, symbol: 'Y' },
-
-        // 특별 보스 (Special Staircase)
-        'V': { name: '뱀파이어 (Special)', hp: 40, dmg: 10, dex: 19, isBoss: true, isSpecial: true, symbol: 'V' },
-    };
-
-    // 아이템 상세 스펙 정의
-    const ITEMS = {
-        // Essences (Heart) - slot: 'heart', Permanent
-        'E_BAT': { name: '박쥐 (9급 정수)', slot: 'heart', effects: { dex: 3, def: -4 }, monsterSymbol: 'B', tier: 9 },
-        'E_GOBLIN': { name: '고블린 (8급 정수)', slot: 'heart', effects: { def: 3, str: 2, dex: -4 }, special: '데미지 +2', monsterSymbol: 'G', tier: 8 }, 
-        'E_ORC': { name: '오크 (6급 정수)', slot: 'heart', effects: { def: 9, maxHp: 20, str: 8, dex: -20 }, special: '턴당 10% 마력 1소모, HP 1 회복. 20% 확률로 2턴당 1행동', monsterSymbol: 'O', tier: 6 },
-        'E_VAMPIRE': { name: '뱀파이어 (4급 정수)', slot: 'heart', effects: { str: 4 }, special: '타격시 25% 확률로 Hp 1 회복.', monsterSymbol: 'V', tier: 4 },
-        'E_WOLF': { name: '늑대 (7급 정수)', slot: 'heart', effects: { dex: 3, def: 2, str: 2 }, monsterSymbol: 'W', tier: 7 },
-        'E_SPIDER': { name: '거미 (7급 정수)', slot: 'heart', effects: { dex: 8, def: -2, str: 4 }, special: '공격 시 10% 확률로 독 부여.', monsterSymbol: 'S', tier: 7 },
-        'E_ZOMBIE': { name: '좀비 (8급 정수)', slot: 'heart', effects: { def: -4, str: 4, dex: 1 }, monsterSymbol: 'Z', tier: 8 },
-        'E_HARPY': { name: '하피 (6급 정수)', slot: 'heart', effects: { dex: 12, str: 2, def: -2 }, special: 'H 키로 주변 4X4칸 적 1턴 마비.', monsterSymbol: 'H', tier: 6 },
-        'E_DURAHAN': { name: '듀라한 (2급 정수)', slot: 'heart', effects: { dex: 20, str: 10, def: 12 }, monsterSymbol: 'D', tier: 2 },
-        'E_MEDUSA': { name: '메두사 (3급 정수)', slot: 'heart', effects: { dex: 13, str: 4, def: -2 }, special: '공격 시 30% 확률로 석화.', monsterSymbol: 'M', tier: 3 },
-        
-        // 붉은색 1급 정수 (보스 드랍)
-        'E_ARACHNE': { name: '아라크네 (1급 정수)', slot: 'heart', effects: { dex: 20, str: 20, def: 20 }, special: '적 피격시 확정 독 부여.', monsterSymbol: 'A', tier: 1 },
-        'E_ONI': { name: '참수자 오니 (1급 정수)', slot: 'heart', effects: { dex: 5, str: 39, def: 20 }, special: 'Y 키로 주변 5x5 평타 데미지.', monsterSymbol: 'K', tier: 1 },
-        'E_YETI': { name: '예티 (1급 정수)', slot: 'heart', effects: { dex: -50, str: 31, def: 32 }, special: 'K 키로 주변 10x10 빙결 (행동 불가).', monsterSymbol: 'Y', tier: 1 },
-
-        // Weapons (Hand) - type: sword, dagger, mace, bow
-        // Swords
-        'W_WOOD_SWORD_OLD': { name: '낡은 나무검', slot: 'hand', type: 'sword', effects: { dmg: 1.0 }, special: '35% 주변 공격' },
-        'W_WOOD_SWORD': { name: '나무검', slot: 'hand', type: 'sword', effects: { dmg: 1.5 }, special: '35% 주변 공격' },
-        'W_WOOD_SWORD_POLISHED': { name: '잘 손질된 나무검', slot: 'hand', type: 'sword', effects: { dmg: 1.8 }, special: '35% 주변 공격' },
-        'W_IRON_SWORD_OLD': { name: '낡은 철검', slot: 'hand', type: 'sword', effects: { dmg: 2.1 }, special: '35% 주변 공격' },
-        'W_IRON_SWORD': { name: '철검', slot: 'hand', type: 'sword', effects: { dmg: 2.5 }, special: '35% 주변 공격' },
-        'W_MITHRIL_LONGSWORD': { name: '미스릴 롱소드', slot: 'hand', type: 'sword', effects: { dmg: 4.0 }, special: '35% 주변 공격' },
-        'W_BONE_SWORD': { name: '날카로운 뼈검', slot: 'hand', type: 'sword', effects: { dmg: 2.3 }, special: '35% 주변 공격' },
-        'W_IRON_SHIELD': { name: '철검과 방패', slot: 'hand', type: 'sword', effects: { dmg: 2.3, def: 2 }, special: '35% 주변 공격, 방어력 +2' },
-        'W_GOBLIN_SWORD': { name: '고블린 검', slot: 'hand', type: 'sword', effects: { dmg: 2.2 }, special: '35% 주변 공격' },
-        'W_BRIGHT_RETURN': { name: '돌아올 광휘', slot: 'hand', type: 'sword', effects: { dmg: 9.0 }, special: '피격시 10% 확률로 내 모든 스텟 해당 층에서 증가. (보스 드랍)' },
-        
-        // Daggers
-        'W_WOOD_DAGGER_OLD': { name: '낡은 나무단검', slot: 'hand', type: 'dagger', effects: { dmg: 0.5 }, special: '35% 1턴에 2번 행동' },
-        'W_WOOD_DAGGER': { name: '나무단검', slot: 'hand', type: 'dagger', effects: { dmg: 1.0 }, special: '35% 1턴에 2번 행동' },
-        'W_WOOD_DAGGER_POLISHED': { name: '잘 손질된 나무단검', slot: 'hand', type: 'dagger', effects: { dmg: 1.2 }, special: '35% 1턴에 2번 행동' },
-        'W_IRON_DAGGER_OLD': { name: '낡은 철단검', slot: 'hand', type: 'dagger', effects: { dmg: 1.4 }, special: '35% 1턴에 2번 행동' },
-        'W_IRON_DAGGER': { name: '철단검', slot: 'hand', type: 'dagger', effects: { dmg: 1.6 }, special: '35% 1턴에 2번 행동' },
-        'W_MITHRIL_DAGGER': { name: '미스릴 단검', slot: 'hand', type: 'dagger', effects: { dmg: 2.7 }, special: '35% 1턴에 2번 행동' },
-        'W_BONE_DAGGER': { name: '날카로운 뼈단검', slot: 'hand', type: 'dagger', effects: { dmg: 2.0 }, special: '35% 1턴에 2번 행동' },
-        'W_POISON_DAGGER': { name: '독단검', slot: 'hand', type: 'dagger', effects: { dmg: 1.5 }, special: '35% 턴마다 1데미지 독 부여.' },
-        'W_GOBLIN_DAGGER': { name: '고블린 단검', slot: 'hand', type: 'dagger', effects: { dmg: 1.8 }, special: '35% 1턴에 2번 행동' },
-        'W_KEVILIN': { name: '케빌린의 단죄', slot: 'hand', type: 'dagger', effects: { dmg: 7.0 }, special: '25% 확률로 주변 아군 1턴 혼란. (보스 드랍)' },
-        
-        // Maces
-        'W_WOOD_MACE_OLD': { name: '낡은 나무 망치', slot: 'hand', type: 'mace', effects: { dmg: 1.2 }, special: '25% 확률로 1턴 마비' },
-        'W_WOOD_MACE': { name: '나무 망치', slot: 'hand', type: 'mace', effects: { dmg: 1.6 }, special: '25% 확률로 1턴 마비' },
-        'W_WOOD_MACE_POLISHED': { name: '잘 손질된 나무망치', slot: 'hand', type: 'mace', effects: { dmg: 2.1 }, special: '25% 확률로 1턴 마비' },
-        'W_IRON_MACE_OLD': { name: '낡은 철 망치', slot: 'hand', type: 'mace', effects: { dmg: 2.6 }, special: '25% 확률로 1턴 마비' },
-        'W_IRON_MACE': { name: '철 망치', slot: 'hand', type: 'mace', effects: { dmg: 2.7 }, special: '25% 확률로 1턴 마비' },
-        'W_STEEL_MACE': { name: '강철 망치', slot: 'hand', type: 'mace', effects: { dmg: 3.4 }, special: '25% 확률로 1턴 마비' },
-        'W_BONE_MACE': { name: '둔탁한 뼈망치', slot: 'hand', type: 'mace', effects: { dmg: 3.0 }, special: '25% 확률로 1턴 마비' },
-        'W_GOBLIN_MACE': { name: '고블린 망치', slot: 'hand', type: 'mace', effects: { dmg: 2.8 }, special: '25% 확률로 1턴 마비' },
-        'W_CRYOS': { name: '혹한의 도끼 크라이오스', slot: 'hand', type: 'mace', effects: { dmg: 12.0 }, special: '피격시 확률적으로 2턴 스턴 빙결 부여.' },
-
-        // Bows (Note: Bow damage is handled in calculateDamage based on arrow presence)
-        'W_WOOD_BOW': { name: '나무 활', slot: 'hand', type: 'bow', effects: { dmgBase: 12, dmgNoArrow: 1 }, special: '화살 없을 시 데미지 약해짐.' },
-        'W_BOW_POLISHED': { name: '잘 손질된 활', slot: 'hand', type: 'bow', effects: { dmgBase: 14, dmgNoArrow: 1 }, special: '화살 없을 시 데미지 약해짐.' },
-        'W_IRON_BOW_OLD': { name: '낡은 철 활', slot: 'hand', type: 'bow', effects: { dmgBase: 16, dmgNoArrow: 1 }, special: '화살 없을 시 데미지 약해짐.' },
-        'W_IRON_BOW': { name: '철 활', slot: 'hand', type: 'bow', effects: { dmgBase: 17, dmgNoArrow: 1 }, special: '화살 없을 시 데미지 약해짐.' },
-        'W_MITHRIL_BOW': { name: '미스릴 활', slot: 'hand', type: 'bow', effects: { dmgBase: 20, dmgNoArrow: 2 }, special: '화살 없을 시 데미지 약해짐.' },
-        'W_GOBLIN_CROSSBOW': { name: '고블린 쇠뇌', slot: 'hand', type: 'bow', effects: { dmgBase: 19, dmgNoArrow: 2 }, special: '화살 없을 시 데미지 약해짐.' },
-        'W_ELF_GLORY': { name: '엘프의 영광', slot: 'hand', type: 'bow', effects: { dmgBase: 28, dmgNoArrow: 4 }, special: '화살 없을 시 데미지 약해짐.' },
-
-        // Armor (Head) - slot: 'head'
-        'A_LEATHER_HELM': { name: '가죽 투구', slot: 'head', effects: { def: 1 } },
-        'A_LAUREL_CROWN': { name: '월계관', slot: 'head', effects: { def: 2 } },
-        'A_IRON_HELM': { name: '철 투구', slot: 'head', effects: { def: 3 } },
-        'A_STEEL_HELM': { name: '강철 투구', slot: 'head', effects: { def: 4 } },
-        'A_MITHRIL_HELM': { name: '미스릴 투구', slot: 'head', effects: { def: 4.5 } },
-        'A_BONE_HELM': { name: '뼈 투구', slot: 'head', effects: { def: 3.5 } },
-        'A_GOBLIN_HELM': { name: '고블린 머리 보호구', slot: 'head', effects: { def: 2.5 } },
-
-        // Armor (Body) - slot: 'body'
-        'A_LEATHER_ARMOR': { name: '가죽 갑옷', slot: 'body', effects: { def: 3 } },
-        'A_LAUREL_ARMOR': { name: '월계목', slot: 'body', effects: { def: 4 } },
-        'A_IRON_ARMOR': { name: '철 갑옷', slot: 'body', effects: { def: 5 } },
-        'A_STEEL_ARMOR': { name: '강철 갑옷', slot: 'body', effects: { def: 6 } },
-        'A_MITHRIL_ARMOR': { name: '미스릴 갑옷', slot: 'body', effects: { def: 6.5 } },
-        'A_BONE_ARMOR': { name: '뼈 갑옷', slot: 'body', effects: { def: 5.5 } },
-        'A_GOBLIN_ARMOR': { name: '고블린 몸통 보호구', slot: 'body', effects: { def: 4.5 } },
-
-        // Rings (Finger) - slot: 'finger'
-        'R_SILVER': { name: '은 반지', slot: 'finger', effects: { randomStat: [1, 2] } },
-        'R_GOLD': { name: '금 반지', slot: 'finger', effects: { randomStat: [1, 3] } },
-        'R_STR': { name: '힘 반지', slot: 'finger', effects: { str: 4 } },
-        'R_DEX': { name: '민첩 반지', slot: 'finger', effects: { dex: 4 } },
-        'R_DEF': { name: '방어 반지', slot: 'finger', effects: { def: 4 } },
-        'R_MAG': { name: '마력 반지', slot: 'finger', effects: { mag: 4 } },
-        'R_PULSE': { name: '펄스 반지', slot: 'finger', special: 'B를 눌러 1턴 전체 정지 마법.' },
-
-        // Consumables (Inventory)
-        'C_BREAD': { name: '빵', slot: 'inventory', type: 'consumable', use: { hunger: 40 } },
-        'C_WATER': { name: '물', slot: 'inventory', type: 'consumable', use: { thirst: 40 } },
-        'C_PRESERVED_FOOD': { name: '보존 식량', slot: 'inventory', type: 'consumable', use: { hunger: 50, thirst: 50 } },
-        'C_TRAP': { name: '덫', slot: 'inventory', type: 'utility', special: '사용하면 그 자리에 덫 설치.' },
-        'C_BANDAGE': { name: '붕대', slot: 'inventory', type: 'consumable', use: { hp: 0.3 } }, // 30% 회복
-        'C_MEDKIT': { name: '구급 수술 키트', slot: 'inventory', type: 'consumable', use: { hp: 0.6 } }, // 60% 회복
-        'C_POTION_STR': { name: '힘 물약', slot: 'inventory', type: 'consumable', use: { str: 1 } },
-        'C_POTION_DEX': { name: '민첩 물약', slot: 'inventory', type: 'consumable', use: { dex: 1 } },
-        'C_POTION_DEF': { name: '방어 물약', slot: 'inventory', type: 'consumable', use: { def: 1 } },
-        'C_POTION_MAG': { name: '마력 물약', slot: 'inventory', type: 'consumable', use: { mag: 1 } },
-        'U_BAG': { name: '모험가의 가방', slot: 'inventory', type: 'upgrade', special: '아이템 보관공간 + 12 (미구현)' },
-        
-        // Arrows (Only for testing purpose, typically managed by count)
-        'ITEM_ARROW': { name: '화살', slot: 'inventory', type: 'utility' },
-        'ITEM_GOLD': { name: '골드', slot: 'inventory', type: 'utility' },
-    };
-
-
-    let gameState = {
-        player: {
-            name: "모험가",
-            gender: "남자",
-            mainWeaponType: "검",
-            race: "인간",
-            lv: 1,
-            // 기본/최대 스탯 (레벨업/종족/정수 등 영구 반영)
-            baseStr: 1, baseDex: 1, baseDef: 1, baseMag: 1,
-            maxHp: BASE_HP,
-            maxMag: BASE_MAG, 
-            
-            // 현재 상태
-            hp: BASE_HP,
-            mag: BASE_MAG,
-            thirst: 0,
-            hunger: 0,
-            
-            // 최종 계산 스탯 (Equipment + Base + Race)
-            str: 1, dex: 1, def: 1, mag: 1, 
-            damage: 0, // 최종 계산 데미지
-            evasionChance: 0, // 최종 계산 회피율
-            defenseReduction: 0, // 최종 계산 방어 감소량/확률
-
-            arrows: 10,
-            gold: 0,
-            inventory: Array(6).fill(null),
-            equipment: {
-                hand: null, // 주무기
-                head: null, 
-                body: null, 
-                heart: Array(3).fill(null), // 정수 3칸
-                finger: Array(4).fill(null), // 반지 4칸
-            },
-            position: { x: 0, y: 0 },
-            sightRange: 7, 
-        },
-        currentFloor: 1,
-        map: [], 
-        exploredMap: [], 
-        monsters: [],
-        itemsOnMap: [],
-        log: ["게임 시작 준비 완료..."],
-        isRedStaircaseFloor: false,
-    };
-
-    const RACE_INFO_EL = $('race-info');
-    const CHAR_OPTIONS = ['char-gender', 'char-weapon', 'char-race'];
-    const MENU_OPTIONS_EL = $('menu-options').children;
-    
-    // =========================================================================
-    // 2. 스탯 계산 및 레벨업 시스템
-    // =========================================================================
-    
-    // 임시 테스트용 아이템 추가 함수
-    function addItemToInventory(itemKey) {
-        const p = gameState.player;
-        const item = ITEMS[itemKey];
-        if (!item) return false;
-
-        for (let i = 0; i < p.inventory.length; i++) {
-            if (p.inventory[i] === null) {
-                p.inventory[i] = { key: itemKey, ...item };
-                logMessage(`${item.name}을(를) 인벤토리에 획득했습니다.`, "log-message");
-                return true;
-            }
-        }
-        logMessage("인벤토리가 가득 찼습니다.", "log-message");
-        return false;
-    }
-
-    // 아이템 및 정수를 포함한 최종 스탯 계산
-    function calculateStats() {
-        const p = gameState.player;
-        let totalStats = {
-            str: p.baseStr, dex: p.baseDex, def: p.baseDef, mag: p.baseMag,
-            maxHp: p.maxHp, maxMag: p.maxMag, 
-            damageBonus: 0, // 무기 데미지 보너스
-            defenseBonus: 0, // 방어구 방어 보너스
-        };
-        
-        const race = RACES[p.race];
-        totalStats.str += race.str;
-        totalStats.dex += race.dex;
-        totalStats.def += race.def;
-        totalStats.mag += race.mag;
-        totalStats.maxHp += race.hp;
-        
-        // 1. 장비 및 정수 효과 합산
-        const allEquippedItems = [
-            p.equipment.hand, p.equipment.head, p.equipment.body,
-            ...p.equipment.heart, ...p.equipment.finger
-        ].filter(item => item !== null);
-
-        for (const item of allEquippedItems) {
-            const effects = item.effects || {};
-            
-            // 기본 스탯
-            totalStats.str += (effects.str || 0);
-            totalStats.dex += (effects.dex || 0);
-            totalStats.def += (effects.def || 0);
-            totalStats.mag += (effects.mag || 0);
-            totalStats.maxHp += (effects.maxHp || 0);
-
-            // 무기 데미지 및 방어구 보너스 (아이템별 특수 효과 처리)
-            if (item.slot === 'hand' && item.effects && item.effects.dmg) {
-                totalStats.damageBonus += item.effects.dmg;
-            }
-            if (item.effects && item.effects.def) {
-                totalStats.defenseBonus += item.effects.def;
-            }
-
-            // 특수 아이템: 랜덤 스탯 반지
-            if (item.key === 'R_SILVER' || item.key === 'R_GOLD') {
-                // 이미 랜덤하게 부여된 스탯을 가정하고 계산에 포함 (실제 구현 시 장착될 때 랜덤 스탯이 부여되어야 함)
-                // 현재는 구현 복잡도 문제로 PASS. 단순히 정수값으로만 반영
-            }
-        }
-        
-        // 2. 최종 스탯 반영
-        p.str = totalStats.str;
-        p.dex = totalStats.dex;
-        p.def = totalStats.def + totalStats.defenseBonus; // 방어 스탯에 방어구 보너스 합산
-        p.mag = totalStats.mag;
-        p.maxHp = totalStats.maxHp;
-        p.maxMag = totalStats.maxMag;
-        
-        // 3. 최종 공격력 계산 (STR이 데미지의 베이스)
-        let finalDamage = p.str + totalStats.damageBonus;
-        
-        // 활 무기 특수 처리
-        if (p.equipment.hand && p.equipment.hand.type === 'bow') {
-            const bowEffects = p.equipment.hand.effects;
-            if (p.arrows > 0) {
-                finalDamage += (bowEffects.dmgBase || 0); // 화살 있을 때 보너스
-            } else {
-                finalDamage += (bowEffects.dmgNoArrow || 0); // 화살 없을 때 보너스
-            }
-        } else {
-            // 근접 무기의 경우 STR을 기본으로 하고 무기 데미지 보너스를 더함
-            finalDamage += 0; // 이미 totalStats.damageBonus에 포함됨
-        }
-
-        p.damage = parseFloat(finalDamage.toFixed(1));
-        
-        // 4. 최종 방어/회피 계산 (간단화)
-        // 민첩: 회피 확률 (DEX 1당 1% 가정)
-        p.evasionChance = Math.max(0, Math.min(50, p.dex)); 
-        
-        // 방어: 데미지 감소 (DEF 1당 0.5% 감소 & 1당 0.5 감소량 가정)
-        p.defenseReduction = { 
-            chance: Math.max(0, Math.min(50, p.def * 2)), 
-            amount: Math.max(0, p.def)
-        };
-        
-        // HP/MAG 최대치 초과 방지
-        p.hp = Math.min(p.hp, p.maxHp);
-        p.mag = Math.min(p.mag, p.maxMag);
-    }
-
-    // 레벨업 함수
-    function levelUp() {
-        const p = gameState.player;
-        p.lv++;
-        p.maxHp++;
-        p.hp = Math.min(p.hp + 1, p.maxHp); 
-
-        const stats = ['baseStr', 'baseDex', 'baseDef', 'baseMag']; // baseStat을 증가시켜야 영구적으로 적용됨
-        const statToBoost = stats[randInt(0, 3)];
-        p[statToBoost]++;
-
-        // 테스트를 위해 임시로 아이템을 획득하게 함
-        if (p.lv === 2) addItemToInventory('W_IRON_SWORD');
-        if (p.lv === 3) addItemToInventory('A_STEEL_HELM');
-        if (p.lv === 4) equipItem(p.inventory[0]); // 첫 번째 아이템 강제 장착
-        if (p.lv === 5) equipItem(p.inventory[1]); // 두 번째 아이템 강제 장착
-
-        logMessage(`레벨 업! Lv ${p.lv}. HP +1, ${statToBoost.replace('base', '').toUpperCase()} +1!`, "log-message");
-        
-        // 스탯 재계산
-        calculateStats(); 
-        if (isStatusModalOpen) renderStatusContent(); // 상태창 열려 있으면 업데이트
-    }
-    
-    // 장비 장착 (임시 구현)
-    function equipItem(item) {
-        if (!item || !item.slot) {
-             logMessage("유효하지 않은 아이템입니다.", "log-message");
-             return;
-        }
-
-        const p = gameState.player;
-        let success = false;
-
-        // 단일 슬롯 장비 (hand, head, body)
-        if (['hand', 'head', 'body'].includes(item.slot)) {
-            p.equipment[item.slot] = item;
-            success = true;
-        } 
-        // 다중 슬롯 장비 (heart, finger)
-        else if (['heart', 'finger'].includes(item.slot)) {
-            const slotArray = p.equipment[item.slot];
-            const emptyIndex = slotArray.findIndex(s => s === null);
-            if (emptyIndex !== -1) {
-                slotArray[emptyIndex] = item;
-                success = true;
-            } else {
-                logMessage(`${item.name} 장착 실패: ${item.slot} 슬롯이 가득 찼습니다.`, "log-message");
-                return;
-            }
-        }
-        
-        if (success) {
-            logMessage(`${item.name}을(를) 장착했습니다.`, "log-message");
-            // 인벤토리에서 제거 (간단화)
-            p.inventory[p.inventory.findIndex(i => i && i.name === item.name)] = null;
-            calculateStats();
-        }
-    }
-
-
-    // =========================================================================
-    // 3. 맵 생성 함수 (Dungeon Generation)
-    // (이전 코드와 동일하므로 생략)
-    // =========================================================================
-
-    // 맵 생성 함수 (Dungeon Generation) - 이전 코드와 동일
-    function placeEntity(map, symbol, room, entityList) {
-        let placed = false;
-        let attempts = 0;
-        const spec = MONSTER_SPECS[symbol];
-        
-        while (!placed && attempts < 20) {
-            attempts++;
-            const x = randInt(room.x1 + 1, room.x2 - 1); 
-            const y = randInt(room.y1 + 1, room.y2 - 1); 
-            
-            if (map[y] && map[y][x] === '.') {
-                
-                map[y][x] = symbol;
-                
-                if (spec) {
-                    entityList.push({ 
-                        symbol: symbol, 
-                        name: spec.name,
-                        x: x, 
-                        y: y, 
-                        hp: spec.hp, 
-                        isBoss: spec.isBoss || false
-                    });
-                } else {
-                    entityList.push({ symbol: symbol, x: x, y: y }); 
-                }
-                placed = true;
-            }
-        }
-    }
-
-    function generateMap(floor) {
-        const currentMapWidth = Math.min(MAP_BASE_WIDTH + (floor - 1) * MAP_SIZE_INCREMENT * 2, MAX_MAP_WIDTH);
-        const currentMapHeight = Math.min(MAP_BASE_HEIGHT + (floor - 1) * MAP_SIZE_INCREMENT, MAX_MAP_HEIGHT);
-
-        let newMap = [];
-        for(let y = 0; y < currentMapHeight; y++) {
-            newMap[y] = Array(currentMapWidth).fill(' '); 
-        }
-        
-        const isBossFloor = [5, 10, 15, 20, 30, 50].includes(floor);
-        const hasShop = [2, 3, 6, 7].includes(floor) && (Math.random() < 0.20);
-        const hasRedStaircase = !isBossFloor && (Math.random() < 0.01);
-        gameState.isRedStaircaseFloor = hasRedStaircase;
-
-        let rooms = [];
-        const numRooms = randInt(2, 9);
-        const MAX_MONSTERS_PER_ROOM = 4;
-        const MAX_ITEMS_PER_ROOM = 2;
-        const MAX_ARROWS_PER_ROOM = 2;
-
-        let attempts = 0;
-        while (rooms.length < numRooms && attempts < 1000) { 
-            attempts++;
-            const roomW = randInt(6, 14);
-            const roomH = randInt(6, 12);
-            const roomX = randInt(1, currentMapWidth - roomW - 1);
-            const roomY = randInt(1, currentMapHeight - roomH - 1);
-            
-            const newRoom = { 
-                x1: roomX, y1: roomY, 
-                x2: roomX + roomW - 1, y2: roomY + roomH - 1, 
-                center: { x: roomX + Math.floor(roomW / 2), y: roomY + Math.floor(roomH / 2) } 
-            };
-
-            let overlaps = false;
-            for (const room of rooms) {
-                if (newRoom.x1 <= room.x2 + 2 && newRoom.x2 >= room.x1 - 2 &&
-                    newRoom.y1 <= room.y2 + 2 && newRoom.y2 >= room.y1 - 2) {
-                    overlaps = true;
-                    break;
-                }
-            }
-
-            if (!overlaps) {
-                rooms.push(newRoom);
-                for (let y = newRoom.y1; y <= newRoom.y2; y++) {
-                    for (let x = newRoom.x1; x <= newRoom.x2; x++) {
-                        if (newMap[y] && newMap[y][x]) {
-                            if (y === newRoom.y1 || y === newRoom.y2 || x === newRoom.x1 || x === newRoom.x2) {
-                                newMap[y][x] = '#';
-                            } else {
-                                newMap[y][x] = '.';
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        for (let i = 0; i < rooms.length - 1; i++) {
-            const r1 = rooms[i].center;
-            const r2 = rooms[i+1].center;
-            
-            for (let x = Math.min(r1.x, r2.x); x <= Math.max(r1.x, r2.x); x++) {
-                if (newMap[r1.y] && newMap[r1.y][x]) {
-                    if (newMap[r1.y][x] === ' ') newMap[r1.y][x] = '#'; 
-                    newMap[r1.y][x] = '.';
-                }
-            }
-            for (let y = Math.min(r1.y, r2.y); y <= Math.max(r1.y, r2.y); y++) {
-                if (newMap[y] && newMap[y][r2.x]) {
-                    if (newMap[y][r2.x] === ' ') newMap[y][r2.x] = '#'; 
-                    newMap[y][r2.x] = '.';
-                }
-            }
-            
-            for (let x = Math.min(r1.x, r2.x); x <= Math.max(r1.x, r2.x); x++) {
-                if (r1.y - 1 >= 0 && newMap[r1.y-1][x] === ' ') newMap[r1.y-1][x] = '#';
-                if (r1.y + 1 < currentMapHeight && newMap[r1.y+1][x] === ' ') newMap[r1.y+1][x] = '#';
-            }
-             for (let y = Math.min(r1.y, r2.y); y <= Math.max(r1.y, r2.y); y++) {
-                if (r2.x - 1 >= 0 && newMap[y][r2.x-1] === ' ') newMap[y][r2.x-1] = '#';
-                if (r2.x + 1 < currentMapWidth && newMap[y][r2.x+1] === ' ') newMap[y][r2.x+1] = '#';
-            }
-        }
-
-        if (rooms.length > 0) {
-            gameState.player.position = { ...rooms[0].center }; 
-            const lastRoomCenter = rooms[rooms.length - 1].center;
-            newMap[lastRoomCenter.y][lastRoomCenter.x] = hasRedStaircase ? 'R' : '$'; 
-        } else {
-            gameState.player.position = { x: 5, y: 5 };
-            newMap[5][5] = '.';
-            newMap[15][15] = '$';
-        }
-        
-        if (hasShop && rooms.length >= 2) {
-            const shopRoomCenter = rooms[1].center; 
-            newMap[shopRoomCenter.y][shopRoomCenter.x] = 'S';
-            logMessage(`이 층에는 상점('S')이 등장했습니다!`, "log-message");
-        }
-
-        gameState.monsters = [];
-        gameState.itemsOnMap = [];
-        
-        const currentMonsterSymbols = Object.values(MONSTER_SPECS)
-            .filter(spec => !spec.isBoss && spec.floors && spec.floors.some(f => floor >= f[0] && floor <= f[1]))
-            .map(spec => spec.symbol);
-
-        for (const room of rooms) {
-            if (room !== rooms[0]) {
-                const numMonsters = randInt(0, MAX_MONSTERS_PER_ROOM);
-                for (let i = 0; i < numMonsters; i++) {
-                    if (currentMonsterSymbols.length === 0) break;
-                    const monsterSymbol = currentMonsterSymbols[randInt(0, currentMonsterSymbols.length - 1)];
-                    placeEntity(newMap, monsterSymbol, room, gameState.monsters);
-                }
-                
-                const numItems = randInt(0, MAX_ITEMS_PER_ROOM);
-                for (let i = 0; i < numItems; i++) {
-                    placeEntity(newMap, '%', room, gameState.itemsOnMap);
-                }
-
-                const numArrows = randInt(0, MAX_ARROWS_PER_ROOM);
-                for (let i = 0; i < numArrows; i++) {
-                    placeEntity(newMap, ')', room, gameState.itemsOnMap);
-                }
-            }
-        }
-
-        if (isBossFloor) {
-            const bossSpec = Object.values(MONSTER_SPECS).find(s => s.isBoss && s.floor === floor);
-            if (bossSpec && rooms.length > 0) {
-                const lastRoomCenter = rooms[rooms.length - 1].center;
-                newMap[lastRoomCenter.y][lastRoomCenter.x] = bossSpec.symbol;
-                gameState.monsters.push({
-                    symbol: bossSpec.symbol,
-                    name: bossSpec.name,
-                    hp: bossSpec.hp,
-                    position: {x: lastRoomCenter.x, y: lastRoomCenter.x},
-                    isBoss: true
-                });
-                logMessage(`주의: ${floor}층의 보스, ${bossSpec.name}이(가) 나타났습니다!`, "log-message");
-            }
-        }
-        
-        gameState.map = newMap;
-        gameState.exploredMap = [];
-        updateVisibility();
-    }
-
-
-    // =========================================================================
-    // 4. FOG OF WAR (시야) 관리
-    // =========================================================================
-
-    function updateVisibility() {
-        const p = gameState.player;
-        const sight = p.sightRange;
-        const mapH = gameState.map.length;
-        const mapW = gameState.map[0].length;
-
-        if (gameState.exploredMap.length !== mapH || (mapH > 0 && gameState.exploredMap[0].length !== mapW)) {
-            gameState.exploredMap = Array(mapH).fill(0).map(() => Array(mapW).fill(false));
-        }
-
-        for (let y = 0; y < mapH; y++) {
-            for (let x = 0; x < mapW; x++) {
-                const dist = Math.max(Math.abs(x - p.position.x), Math.abs(y - p.position.y));
-                
-                if (dist <= sight) {
-                    gameState.exploredMap[y][x] = true;
-                }
-            }
-        }
-    }
-
-
-    // =========================================================================
-    // 5. 화면 관리 및 초기화
-    // =========================================================================
-
-    function showScreen(screenId) {
-        document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
-        
-        const screenEl = $(screenId);
-        if (screenEl) {
-            screenEl.classList.remove('hidden');
-            currentScreen = screenId;
-            
-            if (screenId === 'char-creation') {
-                 // **오류 수정**: 캐릭터 생성 화면으로 이동할 때만 초기 설정 호출
-                updateRaceInfo();
-                updateCharCreationSelection();
-            } else if (screenId === 'game-view') {
-                calculateStats(); // 초기 스탯 계산
-                generateMap(gameState.currentFloor);
-                addItemToInventory('C_BREAD'); // 시작 아이템 지급 (테스트용)
-                addItemToInventory('R_STR');
-                gameState.log = ["게임 시작! 용감한 모험가여, 던전을 탐험하세요. (TAB: 상태창, R: 화살 조준)"];
-                renderGameView();
-            }
-        }
-    }
-
-    function updateMenuSelection(options) {
-        Array.from(options).forEach((item, index) => {
-            if (index === selectedMenuItem) {
-                item.classList.add('selected');
-                item.innerHTML = `&gt; ${item.textContent.replace(/^>\s*/, '').replace(/\s+\(테스트.*$/, '')}`;
-            } else {
-                item.classList.remove('selected');
-                item.innerHTML = item.textContent.replace(/^>\s*/, '');
-            }
-        });
-    }
-
-    function handleMainMenuInput(key) {
-        if (key === 'ArrowUp' || key === 'w') {
-            selectedMenuItem = (selectedMenuItem > 0) ? selectedMenuItem - 1 : MENU_OPTIONS_EL.length - 1;
-        } else if (key === 'ArrowDown' || key === 's') {
-            selectedMenuItem = (selectedMenuItem < MENU_OPTIONS_EL.length - 1) ? selectedMenuItem + 1 : 0;
-        } else if (key === 'enter') { // **수정**: 'Enter' -> 'enter'
-            const action = MENU_OPTIONS_EL[selectedMenuItem].getAttribute('data-action');
-            if (action === 'start') {
-                showScreen('char-creation');
-            } else if (action === 'hall') {
-                logMessage("명예의 전당은 현재 구현되지 않았습니다.", "info-panel");
-            }
-            return;
-        }
-        updateMenuSelection(MENU_OPTIONS_EL);
-    }
-
-    function updateCharCreationSelection() {
-        CHAR_OPTIONS.forEach((id, index) => {
-            const el = $(id);
-            if (index === selectedCharOption) {
-                el.classList.add('selected');
-                if (el.tagName === 'SPAN') {
-                    el.focus();
-                }
-            } else {
-                el.classList.remove('selected');
-            }
-        });
-        
-        const nameInput = $('player-name');
-        if (selectedCharOption === -1) {
-             nameInput.classList.add('selected');
-             nameInput.focus();
-        } else {
-             nameInput.classList.remove('selected');
-        }
-        
-        updateRaceInfo();
-    }
-    
-    function updateRaceInfo() {
-        const race = $('char-race').getAttribute('data-value');
-        const raceData = RACES[race];
-        RACE_INFO_EL.innerHTML = `
-            <h4 class="text-yellow-400 font-bold mb-2">종족 특성: ${race}</h4>
-            <p class="text-gray-400">${raceData.desc}</p>
-        `;
-    }
-
-    function handleCharCreationInput(key) {
-        const currentId = (selectedCharOption === -1) ? 'player-name' : CHAR_OPTIONS[selectedCharOption];
-        const currentEl = $(currentId);
-        
-        if (key === 'ArrowUp' || key === 'w') {
-            if (selectedCharOption > -1) {
-                selectedCharOption -= 1;
-            } else {
-                selectedCharOption = CHAR_OPTIONS.length - 1;
-            }
-            updateCharCreationSelection();
-            return;
-
-        } else if (key === 'ArrowDown' || key === 's') {
-            if (selectedCharOption < CHAR_OPTIONS.length - 1) {
-                selectedCharOption += 1;
-            } else {
-                selectedCharOption = -1;
-            }
-            updateCharCreationSelection();
-            return;
-
-        } else if (selectedCharOption !== -1 && (key === 'ArrowLeft' || key === 'ArrowRight')) {
-            if (currentEl && currentEl.tagName === 'SPAN') {
-                const options = currentEl.getAttribute('data-options').split(',');
-                let currentValue = currentEl.getAttribute('data-value');
-                let currentIndex = options.indexOf(currentValue);
-
-                if (key === 'ArrowRight') {
-                    currentIndex = (currentIndex + 1) % options.length;
-                } else if (key === 'ArrowLeft') {
-                    currentIndex = (currentIndex - 1 + options.length) % options.length;
-                }
-
-                const newValue = options[currentIndex];
-                currentEl.setAttribute('data-value', newValue);
-                currentEl.innerHTML = `&lt; ${newValue} &gt;`;
-                updateRaceInfo(); 
-            }
-            return;
-        } else if (key === 'enter') { // **수정**: 'Enter' -> 'enter'
-            document.activeElement.blur(); 
-            startGame();
-            return;
-        }
-    }
-    
-    function startGame() {
-        const name = $('player-name').value.trim() || "무명 용사";
-        const gender = $('char-gender').getAttribute('data-value');
-        const weapon = $('char-weapon').getAttribute('data-value');
-        const race = $('char-race').getAttribute('data-value');
-        
-        const raceStats = RACES[race];
-
-        gameState.player = {
-            ...gameState.player,
-            name, gender, mainWeaponType: weapon, race,
-            baseStr: 1, baseDex: 1, baseDef: 1, baseMag: 1,
-            maxHp: BASE_HP,
-            hp: BASE_HP,
-            maxMag: BASE_MAG,
-            mag: BASE_MAG,
-        };
-        
-        logMessage(`[${race}] ${name} 님, 모험을 시작합니다!`, "log-message");
-        showScreen('game-view');
-    }
-    
-    function renderStatusContent() {
-        const p = gameState.player;
-        
-        const renderEquipSlot = (item) => item ? `${item.name}` : '---';
-        const renderMultiSlot = (slotArray) => slotArray.map((e, i) => `[${i+1}] ${e ? e.name : '---'}`).join('<br>');
-        const renderInventory = p.inventory.map((item, index) => `[${index+1}] ${item ? item.name : '---'}`).join('<br>');
-        
-        // 최종 데미지, 방어 정보 표시
-        const finalDamageInfo = `${p.damage} (STR:${p.str} + Bonus:${(p.damage - p.str).toFixed(1)})`;
-        const finalEvasionInfo = `${p.evasionChance}%`;
-        const finalDefenseInfo = `${p.def} | 감소 확률: ${p.defenseReduction.chance}%`;
-
-        const content = `
-            <div class="modal-title font-mono">=== ${p.name}'s STATUS ===</div>
-            <div id="player-status-content" class="text-gray-300 text-sm grid grid-cols-3 gap-6 font-mono">
-                
-                <!-- 기본 정보 및 스탯 -->
-                <div class="col-span-1 border-r border-gray-700 pr-4">
-                    <h4 class="text-lg font-bold text-blue-400 mb-2 border-b border-gray-700 pb-1">:: 기본 스탯 ::</h4>
-                    <p class="stat-line"><span>이름:</span> <span>${p.name}</span></p>
-                    <p class="stat-line"><span>Lv:</span> <span>${p.lv}</span></p>
-                    <p class="stat-line"><span>성별:</span> <span>${p.gender}</span></p>
-                    <p class="stat-line"><span>종족:</span> <span>${p.race}</span></p>
-                    <p class="stat-line text-red-400"><span>HP:</span> <span>${p.hp} / ${p.maxHp}</span></p>
-                    <p class="stat-line text-blue-400"><span>마력 (MAG):</span> <span>${p.mag} / ${p.maxMag}</span></p>
-                    <p class="stat-line text-yellow-400"><span>갈증:</span> <span>${p.thirst}%</span></p>
-                    <p class="stat-line text-yellow-400"><span>배고픔:</span> <span>${p.hunger}%</span></p>
-                    
-                    <h4 class="text-lg font-bold text-green-400 mt-4 mb-2 border-b border-gray-700 pb-1">:: 전투 능력 ::</h4>
-                    <p class="stat-line"><span>근력 (STR):</span> <span>${p.str}</span></p>
-                    <p class="stat-line"><span>민첩 (DEX):</span> <span>${p.dex}</span></p>
-                    <p class="stat-line"><span>방어 (DEF):</span> <span>${p.def}</span></p>
-                    <p class="stat-line"><span>마력 (MAG):</span> <span>${p.mag}</span></p>
-                </div>
-                
-                <!-- 최종 전투 스탯 -->
-                <div class="col-span-1 border-r border-gray-700 pr-4">
-                    <h4 class="text-lg font-bold text-red-400 mb-2 border-b border-gray-700 pb-1">:: 최종 전투 정보 ::</h4>
-                    <p class="stat-line"><span>공격력:</span> <span class="text-yellow-300">${finalDamageInfo}</span></p>
-                    <p class="text-xs text-gray-500 mb-4">(STR이 베이스 데미지)</p>
-                    
-                    <p class="stat-line"><span>회피 확률 (DEX):</span> <span class="text-green-300">${finalEvasionInfo}</span></p>
-                    <p class="text-xs text-gray-500 mb-4">(민첩에 비례하여 증가)</p>
-                    
-                    <p class="stat-line"><span>피해 감소 (DEF):</span> <span class="text-blue-300">${finalDefenseInfo}</span></p>
-                    <p class="text-xs text-gray-500 mb-4">(방어 스탯에 비례하여 감소량/확률 증가)</p>
-
-                    <h4 class="text-lg font-bold text-yellow-400 mt-4 mb-2 border-b border-gray-700 pb-1">:: 장착 장비 ::</h4>
-                    <p class="stat-line"><span>주무기:</span> <span class="text-right">${renderEquipSlot(p.equipment.hand)}</span></p>
-                    <p class="stat-line"><span>머리:</span> <span class="text-right">${renderEquipSlot(p.equipment.head)}</span></p>
-                    <p class="stat-line"><span>몸:</span> <span class="text-right">${renderEquipSlot(p.equipment.body)}</span></p>
-                    
-                </div>
-                
-                <!-- 인벤토리 및 정수/반지 -->
-                <div class="col-span-1">
-                    <h4 class="text-lg font-bold text-yellow-400 mb-2 border-b border-gray-700 pb-1">:: 정수 (심장) ::</h4>
-                    <p class="text-sm text-right leading-relaxed">${renderMultiSlot(p.equipment.heart)}</p>
-
-                    <h4 class="text-lg font-bold text-yellow-400 mt-4 mb-2 border-b border-gray-700 pb-1">:: 반지 (손가락) ::</h4>
-                    <p class="text-sm text-right leading-relaxed">${renderMultiSlot(p.equipment.finger)}</p>
-
-                    <h4 class="text-lg font-bold text-green-400 mt-4 mb-2 border-b border-gray-700 pb-1">:: 인벤토리 :: (${p.inventory.filter(i => i).length} / ${p.inventory.length})</h4>
-                    <div class="grid grid-cols-2 gap-1 mt-2 text-xs text-right">
-                        ${renderInventory}
-                    </div>
-                    <div class="stat-line mt-4"><span>화살 보유량:</span> <span class="text-green-300">${p.arrows}</span></div>
-                    <div class="stat-line"><span>골드 보유량:</span> <span class="text-yellow-300">${p.gold}</span></div>
-                </div>
-
-            </div>
-            <div class="flex justify-center mt-6">
-                <button onclick="toggleStatusModal()" class="px-6 py-2 bg-red-700 hover:bg-red-600 rounded transition duration-150">
-                    닫기 (TAB)
-                </button>
-            </div>
-        `;
-
-        $('status-modal').innerHTML = content;
-    }
-
-
-    function toggleStatusModal(open) {
-        if (open === undefined) {
-            isStatusModalOpen = !isStatusModalOpen;
-        } else {
-            isStatusModalOpen = open;
-        }
-        
-        if (isStatusModalOpen) {
-            calculateStats(); // 상태창 열 때 스탯 업데이트
-            renderStatusContent();
-            $('status-overlay').classList.remove('hidden');
-        } else {
-            $('status-overlay').classList.add('hidden');
-        }
-    }
-
-    // =========================================================================
-    // 6. 맵 렌더링 (전체 맵 표시 + FOW 적용)
-    // =========================================================================
-
-    function renderMap() {
-        if (!gameState.map || gameState.map.length === 0) return;
-
-        const p = gameState.player;
-        const mapH = gameState.map.length;
-        const mapW = gameState.map[0].length;
-        
-        let mapHtml = `현재 층: ${gameState.currentFloor}F (크기: ${mapW}x${mapH}) | LV: ${p.lv} | HP: ${p.hp}/${p.maxHp} | MAG: ${p.mag}/${p.maxMag}<br><br>`;
-
-        for (let y = 0; y < mapH; y++) {
-            for (let x = 0; x < mapW; x++) {
-                
-                const isExplored = gameState.exploredMap[y][x];
-                const dist = Math.max(Math.abs(x - p.position.x), Math.abs(y - p.position.y));
-                const isVisible = (dist <= p.sightRange);
-                
-                // 조준 모드 시 조준점에 특수 표시
-                let isAimingTarget = false;
-                if (isArrowAiming && aimingTarget) {
-                    isAimingTarget = (x === aimingTarget.x && y === aimingTarget.y);
-                }
-
-                if (!isExplored) {
-                    mapHtml += `<span class="unknown"> </span>`; 
-                    continue; 
-                }
-
-                let cell = gameState.map[y][x];
-                let symbol = cell;
-                let color = '#6b7280'; 
-                let classes = '';
-
-                if (!isVisible) {
-                    if (cell === '@' || MONSTER_SPECS[cell] || cell === '%' || cell === ')') {
-                        symbol = '.'; 
-                    } 
-                    if (cell === '$' || cell === 'R' || cell === 'S') {
-                        symbol = cell;
-                    }
-                    
-                    color = '#30363d'; 
-                    mapHtml += `<span class="unseen" style="color:${color};">${symbol}</span>`;
-                    continue;
-                }
-
-                if (cell === '@') {
-                    color = '#00ff00';
-                } else if (cell === '#') {
-                    color = '#4b5563'; 
-                } else if (cell === 'R') {
-                    symbol = '$';
-                    classes = 'special-stairs'; 
-                } else if (cell === '$') {
-                    color = '#ffffff'; 
-                } else if (cell === '%') {
-                    color = '#ffd700'; 
-                } else if (cell === ')') {
-                    color = '#a0522d'; 
-                } else if (cell === 'S') {
-                    color = '#00ffff'; 
-                } else if (MONSTER_SPECS[cell]) {
-                    const spec = MONSTER_SPECS[cell];
-                    if (spec.isBoss || spec.isSpecial) {
-                        classes = 'boss-symbol'; 
-                    } else {
-                        color = '#b0c4de'; 
-                    }
-                } else if (cell === '.') {
-                    color = '#6b7280'; 
-                }
-                
-                if (isAimingTarget) {
-                    // 조준 모드 시 대상 셀은 하이라이트
-                    mapHtml += `<span class="bg-red-800" style="color:${color};">${symbol}</span>`;
-                } else {
-                    mapHtml += `<span class="${classes}" style="color:${color};">${symbol}</span>`;
-                }
-            }
-            mapHtml += '\n';
-        }
-
-        $('map-area').innerHTML = mapHtml;
-    }
-
-    function renderGameView() {
-        renderMap();
-        logMessage(`[${gameState.player.race}] ${gameState.player.name} 님, ${gameState.currentFloor}F를 탐험 중입니다.`, "log-message", true); 
-    }
-
-    // =========================================================================
-    // 7. 게임 플레이 입력 처리 및 이동
-    // =========================================================================
-
-    let aimingTarget = null; // 조준 모드 시 목표 좌표
-
-    function handleGameInput(key) {
-        let dx = 0, dy = 0;
-        
-        if (key === 'tab') {
-            toggleStatusModal();
-            return;
-        }
-        
-        if (key === 'l') { // 테스트용 레벨업
-            levelUp();
-            return;
-        }
-
-        if (isStatusModalOpen) {
-            return;
-        }
-
-        if (key === 'r') {
-            isArrowAiming = !isArrowAiming;
-            if (isArrowAiming) {
-                 // 조준 모드 진입 시 플레이어 위치를 초기 조준점으로 설정
-                aimingTarget = { ...gameState.player.position };
-                logMessage(`화살 발사 모드: 방향을 선택하세요 (WASD/화살표)`, "log-message");
-            } else {
-                aimingTarget = null;
-                logMessage("화살 발사 모드 해제", "log-message");
-            }
-            renderGameView(); 
-            return;
-        }
-
-        if (key === 'w' || key === 'ArrowUp') { dy = -1; }
-        else if (key === 's' || key === 'ArrowDown') { dy = 1; }
-        else if (key === 'a' || key === 'ArrowLeft') { dx = -1; }
-        else if (key === 'd' || key === 'ArrowRight') { dx = 1; }
-
-        if (dx !== 0 || dy !== 0) {
-            if (isArrowAiming) {
-                // 조준 모드: 조준점 이동
-                moveAimingTarget(dx, dy);
-            } else {
-                // 일반 이동
-                movePlayer(dx, dy);
-            }
-        }
-        
-        // 조준 모드 시 Enter 키를 눌러 발사
-        if (isArrowAiming && key === 'enter') {
-            fireArrow(dx, dy);
-        }
-    }
-    
-    function moveAimingTarget(dx, dy) {
-        if (!aimingTarget) return;
-
-        const newX = aimingTarget.x + dx;
-        const newY = aimingTarget.y + dy;
-        const p = gameState.player.position;
-
-        // 사거리 5칸 제한
-        const dist = Math.max(Math.abs(newX - p.x), Math.abs(newY - p.y));
-        if (dist > ARROW_RANGE) {
-            logMessage(`조준 가능 사거리는 ${ARROW_RANGE}칸입니다.`, "log-message");
-            return;
-        }
-        
-        // 맵 범위 내에 있는지 확인
-        if (newY >= 0 && newY < gameState.map.length && newX >= 0 && newX < gameState.map[0].length) {
-            aimingTarget.x = newX;
-            aimingTarget.y = newY;
-            renderMap(); 
-        }
-    }
-    
-    function fireArrow(dx, dy) {
-        const p = gameState.player;
-        if (p.arrows <= 0) {
-            logMessage("화살이 부족합니다!", "log-message");
-            isArrowAiming = false;
-            aimingTarget = null;
-            renderGameView();
-            return;
-        }
-        
-        // 화살 소모
-        p.arrows--;
-        
-        // 간단한 화살 발사 로직: 조준점의 몬스터에게 명중 가정 (복잡한 Ray-Casting 생략)
-        const targetCell = gameState.map[aimingTarget.y][aimingTarget.x];
-        if (MONSTER_SPECS[targetCell]) {
-            logMessage(`화살이 ${MONSTER_SPECS[targetCell].name}에게 명중했습니다! (피해 로직 미구현)`, "log-message");
-        } else {
-            logMessage(`화살이 ${aimingTarget.x}, ${aimingTarget.y} 에 빗나갔습니다.`, "log-message");
-        }
-        
-        // 조준 모드 해제
-        isArrowAiming = false;
-        aimingTarget = null;
-        renderGameView();
-    }
-
-
-    function movePlayer(dx, dy) {
-        const p = gameState.player;
-        const mapH = gameState.map.length;
-        const mapW = gameState.map[0].length;
-        
-        const newX = p.position.x + dx;
-        const newY = p.position.y + dy;
-        
-        if (newY < 0 || newY >= mapH || newX < 0 || newX >= mapW) return;
-
-        const targetCell = gameState.map[newY][newX];
-        
-        if (targetCell === '#' || targetCell === ' ') { 
-            logMessage("벽이 가로막고 있습니다.", "log-message");
-            return;
-        } else if (targetCell === '$' || targetCell === 'R') {
-            if (gameState.currentFloor === 50) {
-                logMessage("축하합니다! 던전을 클리어했습니다!", "log-message");
-                showScreen('main-menu');
-                return;
-            }
-            logMessage(`다음 층 (${gameState.currentFloor + 1}F)으로 내려갑니다...`, "log-message");
-            gameState.map[p.position.y][p.position.x] = '.'; 
-            gameState.currentFloor++;
-            generateMap(gameState.currentFloor); 
-        } else if (targetCell === '%' || targetCell === ')') {
-             const itemType = targetCell === '%' ? "아이템" : "화살";
-             if (itemType === "화살") gameState.player.arrows++;
-             
-             logMessage(`${itemType}을(를) 획득했습니다. (획득 로직 구현 필요)`, "log-message");
-
-             gameState.map[p.position.y][p.position.x] = '.'; 
-             p.position.x = newX;
-             p.position.y = newY;
-             gameState.map[p.position.y][p.position.x] = '@';
-        } else if (targetCell === 'S') {
-            logMessage("상점에 입장했습니다. (구매 로직 구현 필요)", "log-message");
-             gameState.map[p.position.y][p.position.x] = '.'; 
-             p.position.x = newX;
-             p.position.y = newY;
-             gameState.map[p.position.y][p.position.x] = '@';
-        } else if (MONSTER_SPECS[targetCell]) {
-            logMessage(`${MONSTER_SPECS[targetCell].name}을(를) 공격! (전투 로직 구현 필요)`, "log-message");
-            return; 
-        } else if (targetCell === '.') {
-            gameState.map[p.position.y][p.position.x] = '.'; 
-            p.position.x = newX;
-            p.position.y = newY;
-            gameState.map[p.position.y][p.position.x] = '@'; 
-        }
-        
-        updateVisibility();
-        renderGameView(); 
-    }
-    
-    function logMessage(message, targetId, forceUpdate = false) {
-        const logPanel = $(targetId);
-        if (logPanel) {
-            if (targetId === "log-message") {
-                if (forceUpdate) {
-                    gameState.log = [message];
-                } else {
-                    gameState.log.push(message);
-                }
-                
-                if (gameState.log.length > 10) gameState.log.shift();
-                
-                logPanel.innerHTML = gameState.log.slice(-10).map(msg => `&gt; ${msg}`).join('<br>');
-                logPanel.scrollTop = logPanel.scrollHeight;
-            }
-        }
-    }
-
-    // =========================================================================
-    // 8. 전역 키 입력 핸들러
-    // =========================================================================
-
-    document.addEventListener('keydown', (e) => {
-        const key = e.key.toLowerCase();
-        
-        if (key === 'enter' || key === 'tab') {
-            e.preventDefault();
-        }
-
-        if (currentScreen === 'main-menu') {
-            handleMainMenuInput(key);
-        } else if (currentScreen === 'char-creation') {
-            if (document.activeElement.id === 'player-name' && key !== 'enter') {
-                return;
-            }
-            handleCharCreationInput(key);
-        } else if (currentScreen === 'game-view') {
-            handleGameInput(key);
-        }
+  <h1>동물 이미지 퀴즈</h1>
+
+  <div class="row">
+    <span class="pill">점수: <span id="score">0</span></span>
+    <span class="pill">문제: <span id="round">0</span>/<span id="total">5</span></span>
+  </div>
+
+  <div class="row">
+    <button id="startBtn">퀴즈 시작</button>
+    <button id="nextBtn" style="display:none">다음 문제</button>
+  </div>
+
+  <div id="quizArea" style="display:none">
+    <div id="imageBox" class="row"></div>
+    <div id="options" class="options"></div>
+    <div id="result" class="status"></div>
+  </div>
+
+  <hr class="row"/>
+
+  <h2>소리 API 테스트</h2>
+  <div class="row">
+    <input id="name" type="text" placeholder="dog / cat / pig"/>
+    <button onclick="getSound()">API 요청</button>
+  </div>
+  <h3 id="sound"></h3>
+  <div id="imgFromSound"></div>
+
+  <script>
+    const TOTAL_ROUNDS = 5;
+    document.getElementById('total').textContent = TOTAL_ROUNDS;
+
+    let current = null;
+    let canAnswer = false;
+    let score = 0;
+    let round = 0;
+
+    const startBtn = document.getElementById('startBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const quizArea = document.getElementById('quizArea');
+    const imageBox = document.getElementById('imageBox');
+    const optionsEl = document.getElementById('options');
+    const resultEl = document.getElementById('result');
+    const scoreEl = document.getElementById('score');
+    const roundEl = document.getElementById('round');
+
+    const API_BASE = 'https://web-1-ombv.onrender.com';
+
+    startBtn.addEventListener('click', () => {
+      score = 0; round = 0;
+      scoreEl.textContent = score;
+      roundEl.textContent = round;
+      startBtn.style.display = 'none';
+      nextBtn.style.display = 'inline-block';
+      quizArea.style.display = 'block';
+      loadQuestion();
     });
 
-    // =========================================================================
-    // 9. 초기 실행
-    // =========================================================================
-    window.onload = () => {
-        showScreen('main-menu');
-    };
-</script>
+    nextBtn.addEventListener('click', () => {
+      if (round >= TOTAL_ROUNDS) {
+        startBtn.style.display = 'inline-block';
+        nextBtn.style.display = 'none';
+        quizArea.style.display = 'none';
+        resultEl.textContent = '';
+        imageBox.innerHTML = '';
+        optionsEl.innerHTML = '';
+        return;
+      }
+      loadQuestion();
+    });
 
+    function loadQuestion() {
+      fetch(`${API_BASE}/quiz/image`)
+        .then(r => r.json())
+        .then(data => {
+          current = data;
+          round++;
+          roundEl.textContent = round;
+          resultEl.textContent = '';
+
+          imageBox.innerHTML = `<img src="${data.img}" alt="animal">`;
+          optionsEl.innerHTML = '';
+          data.options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.textContent = opt;
+            btn.addEventListener('click', () => choose(opt));
+            optionsEl.appendChild(btn);
+          });
+          canAnswer = true;
+
+          nextBtn.textContent = (round === TOTAL_ROUNDS) ? '결과 보기' : '다음 문제';
+        })
+        .catch(err => {
+          console.error(err);
+          resultEl.textContent = '문제를 불러오지 못했습니다.';
+          resultEl.className = 'status bad';
+        });
+    }
+
+    function choose(opt) {
+      if (!canAnswer) return;
+      canAnswer = false;
+
+      if (opt === current.answer) {
+        score++;
+        scoreEl.textContent = score;
+        resultEl.textContent = '정답입니다.';
+        resultEl.className = 'status ok';
+      } else {
+        resultEl.textContent = `오답입니다. 정답: ${current.answer}`;
+        resultEl.className = 'status bad';
+      }
+
+      if (round === TOTAL_ROUNDS) {
+        setTimeout(() => {
+          resultEl.textContent = `퀴즈 종료 — 점수: ${score}/${TOTAL_ROUNDS}`;
+        }, 200);
+      }
+    }
+
+    function getSound() {
+      const name = document.getElementById('name').value;
+      fetch(`${API_BASE}/sound/${name}`)
+        .then((response) => response.json())
+        .then((data) => {
+          document.getElementById('sound').innerHTML = data.sound || '';
+          if (data.img) {
+            document.getElementById('imgFromSound').innerHTML =
+              `<img src="${data.img}" alt="${name}" width="300">`;
+          } else {
+            document.getElementById('imgFromSound').innerHTML = '';
+          }
+        });
+    }
+  </script>
 </body>
 </html>
+
