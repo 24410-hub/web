@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>명예의 전당</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase CDN -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        body { font-family: 'Courier New', Courier, monospace; background-color: #000000; color: #E0E0E0; }
+        .hof-container { border: 4px solid #aa0000; box-shadow: 0 0 15px #aa0000; }
+        .header-text { color: #ffeb3b; }
+        .rank-item:nth-child(odd) { background-color: #1a0000; }
+        .rank-item:nth-child(even) { background-color: #0f0000; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <div class="hof-container p-8 rounded-lg w-full max-w-2xl">
+        <h1 class="text-4xl font-extrabold text-center mb-6 header-text">:: 명예의 전당 ::</h1>
+        
+        <div id="loading" class="text-center text-red-500 mb-4">데이터 로드 중...</div>
+        
+        <div id="leaderboard-table" class="space-y-1">
+            <div class="flex p-3 font-bold border-b border-red-700 text-red-400">
+                <span class="w-1/6">순위</span>
+                <span class="w-3/6">플레이어 (이메일)</span>
+                <span class="w-2/6 text-right">최대 층수</span>
+            </div>
+        </div>
+
+        <button onclick="location.href='main.html'" class="w-full mt-8 bg-gray-700 text-red-300 p-3 rounded-md font-bold hover:bg-gray-600">메인 화면으로 돌아가기</button>
+    </div>
+
+    <script>
+        // ⚠️ 실제 프로젝트 구성 정보로 교체하세요!
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "rouge-ba478.firebaseapp.com",
+            databaseURL: "https://rouge-ba478-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            projectId: "rouge-ba478",
+            storageBucket: "rouge-ba478.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const leaderboardTable = document.getElementById('leaderboard-table');
+        const loadingEl = document.getElementById('loading');
+
+        /**
+         * @function fetchLeaderboard
+         * @description Realtime Database에서 리더보드 데이터를 로드하여 표시합니다.
+         */
+        function fetchLeaderboard() {
+            loadingEl.style.display = 'block';
+
+            // 'leaderboard' 경로에서 max_level 기준으로 내림차순 정렬하여 상위 100개를 가져옵니다.
+            database.ref('leaderboard')
+                .orderByChild('max_level')
+                .limitToLast(100) // 상위 100명
+                .once('value')
+                .then((snapshot) => {
+                    loadingEl.style.display = 'none';
+                    
+                    const leaderboard = [];
+                    snapshot.forEach((childSnapshot) => {
+                        const scoreData = childSnapshot.val();
+                        leaderboard.push({
+                            email: scoreData.email || "Unknown User",
+                            maxLevel: scoreData.max_level || 0,
+                            gold: scoreData.gold || 0 // (필요하다면 추가 정보)
+                        });
+                    });
+
+                    // Firebase는 limitToLast를 사용하면 오름차순으로 가져오므로, JS에서 내림차순으로 다시 정렬합니다.
+                    leaderboard.sort((a, b) => b.maxLevel - a.maxLevel);
+
+                    renderLeaderboard(leaderboard);
+                })
+                .catch((error) => {
+                    loadingEl.textContent = `[ERROR] 리더보드 로드 실패: ${error.message}`;
+                });
+        }
+
+        /**
+         * @function renderLeaderboard
+         * @description 리더보드 데이터를 HTML 테이블에 렌더링합니다.
+         */
+        function renderLeaderboard(data) {
+            if (data.length === 0) {
+                const noData = document.createElement('p');
+                noData.textContent = "아직 등록된 기록이 없습니다.";
+                noData.className = "text-center mt-4 text-gray-500";
+                leaderboardTable.appendChild(noData);
+                return;
+            }
+
+            data.forEach((item, index) => {
+                const rankEl = document.createElement('div');
+                rankEl.className = `rank-item flex p-3 rounded-md text-sm border-b border-gray-900 ${index < 3 ? 'font-extrabold text-yellow-300' : 'text-gray-300'}`;
+                
+                rankEl.innerHTML = `
+                    <span class="w-1/6">${index + 1}</span>
+                    <span class="w-3/6">${item.email.split('@')[0]}@...</span>
+                    <span class="w-2/6 text-right">${item.maxLevel}층</span>
+                `;
+                leaderboardTable.appendChild(rankEl);
+            });
+        }
+
+        window.onload = fetchLeaderboard;
+    </script>
+</body>
+</html>
