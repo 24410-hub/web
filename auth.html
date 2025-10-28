@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>시스템 인증: 로그인 및 회원가입</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 터미널 폰트 (VT323) 사용 -->
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK 로드 -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+
+    <style>
+        /* 고전 터미널 스타일 - 검은색 & 녹색 단색 구성 */
+        body {
+            font-family: 'VT323', 'Courier New', monospace;
+            background-color: #000000; /* 순수 검은색 배경 */
+            color: #00ff00; /* 밝은 녹색 텍스트 */
+            overflow: hidden; 
+            letter-spacing: 2px;
+            font-size: 1.25rem; /* 가독성 향상 */
+        }
+        .auth-card {
+            background-color: #000000;
+            /* 네온 효과를 주는 녹색 테두리 */
+            border: 4px solid #00aa00;
+            box-shadow: 0 0 20px #00aa00, inset 0 0 10px #00aa00; 
+            border-radius: 0; /* 각진 스타일 */
+        }
+        .terminal-input {
+            background-color: #000000;
+            border: 2px solid #00aa00;
+            color: #00ff00;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0;
+            box-shadow: inset 0 0 5px #00aa00; /* 내부 그림자로 깊이감 표현 */
+        }
+        .terminal-input:focus {
+            outline: none;
+            border-color: #00ff00;
+            box-shadow: 0 0 8px #00ff00, inset 0 0 5px #00ff00;
+        }
+        .menu-button {
+            background-color: #000000;
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            transition: background-color 0.1s, color 0.1s, box-shadow 0.1s;
+            text-shadow: 0 0 5px #00ff00; /* 네온 효과 */
+            border-radius: 0;
+        }
+        .menu-button:hover {
+            background-color: #00ff00;
+            color: #000000; /* 호버 시 반전 */
+            box-shadow: 0 0 15px #00ff00;
+            transform: translateY(-1px);
+        }
+        .tab-active {
+            background-color: #00ff00 !important;
+            color: #000000 !important;
+            border-bottom: 2px solid #00ff00;
+            box-shadow: 0 5px 10px #00ff00;
+        }
+        .error-text {
+            color: #ff0000; /* 오류는 빨간색으로, 로그라이크 스타일에서 자주 사용 */
+            border: 2px solid #ff0000;
+            text-shadow: 0 0 5px #ff0000;
+        }
+        .success-text {
+            color: #00ff00; 
+            border: 2px solid #00aa00;
+            text-shadow: 0 0 5px #00ff00;
+        }
+        /* 스캔라인 효과 (옵션) */
+        .scanline::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: linear-gradient(
+                to bottom,
+                rgba(0, 0, 0, 0) 50%,
+                rgba(0, 50, 0, 0.25) 50%
+            );
+            background-size: 100% 4px;
+            z-index: 10;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4 scanline">
+    <!-- Firebase Configuration and Init -->
+    <script>
+        // Firebase 설정: 이 부분은 사용자의 실제 값으로 채워져야 합니다.
+        const firebaseConfig = {
+            apiKey: "AIzaSyDSK6u0YhUyqFxsAg_06hhdzBP161Ei7TM",
+            authDomain: "rouge-ba478.firebaseapp.com",
+            databaseURL: "https://rouge-ba478-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "rouge-ba478",
+            storageBucket: "rouge-ba478.appspot.com",
+            messagingSenderId: "912135902194",
+            appId: "YOUR_APP_ID_HERE"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        let isLoginMode = true; // 현재 로그인 모드인지 회원가입 모드인지 추적
+
+        // 경고/정보 메시지 표시 함수
+        function showMessage(message, type = 'success') {
+            const container = document.getElementById('message-container');
+            container.textContent = `[STATUS] ${message}`;
+            container.className = `p-3 mb-6 font-bold text-center ${type === 'error' ? 'error-text' : 'success-text'}`;
+            container.style.display = 'block';
+            setTimeout(() => {
+                container.style.display = 'none';
+            }, 5000);
+        }
+
+        // 로그인/회원가입 모드 토글
+        function toggleMode(isLogin) {
+            isLoginMode = isLogin;
+            const loginSection = document.getElementById('login-section');
+            const signupSection = document.getElementById('signup-section');
+            const loginTab = document.getElementById('login-tab');
+            const signupTab = document.getElementById('signup-tab');
+
+            if (isLogin) {
+                loginSection.style.display = 'block';
+                signupSection.style.display = 'none';
+                loginTab.classList.add('tab-active');
+                signupTab.classList.remove('tab-active');
+                document.getElementById('auth-title').textContent = '-- 시스템 접속 (LOGIN) --';
+            } else {
+                loginSection.style.display = 'none';
+                signupSection.style.display = 'block';
+                signupTab.classList.add('tab-active');
+                loginTab.classList.remove('tab-active');
+                document.getElementById('auth-title').textContent = '-- 사용자 등록 (SIGNUP) --';
+            }
+            // 메시지 초기화
+            document.getElementById('message-container').style.display = 'none';
+        }
+
+        // ====== 회원가입 처리 ======
+        function handleSignUp() {
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const displayName = document.getElementById('signup-displayname').value;
+
+            if (!email || !password || !displayName) {
+                showMessage('모든 정보를 입력해야 사용자 등록을 진행할 수 있습니다.', 'error');
+                return;
+            }
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    return userCredential.user.updateProfile({
+                        displayName: displayName
+                    }).then(() => {
+                        showMessage(`사용자 등록 성공: ${displayName}님, 접속을 환영합니다.`, 'success');
+                        setTimeout(() => {
+                            window.location.href = 'main.html';
+                        }, 1500);
+                    });
+                })
+                .catch((error) => {
+                    let msg;
+                    switch (error.code) {
+                        case 'auth/email-already-in-use': msg = 'ERROR: 이미 등록된 이메일입니다.'; break;
+                        case 'auth/invalid-email': msg = 'ERROR: 유효하지 않은 이메일 형식입니다.'; break;
+                        case 'auth/weak-password': msg = 'ERROR: 비밀번호는 6자 이상이어야 합니다.'; break;
+                        default: msg = `ERROR: 사용자 등록 실패 (${error.code})`;
+                    }
+                    showMessage(msg, 'error');
+                });
+        }
+
+        // ====== 로그인 처리 ======
+        function handleSignIn() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            if (!email || !password) {
+                showMessage('ERROR: 이메일과 비밀번호를 입력하십시오.', 'error');
+                return;
+            }
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    showMessage(`접속 성공: ${userCredential.user.displayName || userCredential.user.email}님 환영합니다.`, 'success');
+                    setTimeout(() => {
+                        window.location.href = 'main.html';
+                    }, 1500);
+                })
+                .catch((error) => {
+                    let msg;
+                    switch (error.code) {
+                        case 'auth/user-not-found':
+                        case 'auth/wrong-password': msg = 'ERROR: 이메일이 없거나 비밀번호가 일치하지 않습니다.'; break;
+                        case 'auth/invalid-email': msg = 'ERROR: 유효하지 않은 이메일 형식입니다.'; break;
+                        default: msg = `ERROR: 접속 실패 (${error.code})`;
+                    }
+                    showMessage(msg, 'error');
+                });
+        }
+        
+        // 페이지 로드 시 로그인 모드 기본값 설정
+        window.onload = () => {
+            toggleMode(true);
+        };
+    </script>
+
+    <!-- UI Layout -->
+    <div class="auth-card p-8 w-full max-w-lg">
+        <h1 id="auth-title" class="text-4xl font-extrabold text-center mb-6 border-b-4 border-double border-green-500 pb-3">
+            -- 시스템 접속 (LOGIN) --
+        </h1>
+        
+        <!-- 메시지 출력 컨테이너 -->
+        <div id="message-container" style="display:none;" class="p-3 mb-6 font-bold text-center"></div>
+
+        <!-- 탭 네비게이션 -->
+        <div class="flex mb-6 border-b-2 border-green-700">
+            <button id="login-tab" onclick="toggleMode(true)"
+                    class="flex-1 p-3 text-2xl font-bold border-2 border-b-0 border-green-500 bg-black menu-button hover:text-black hover:bg-green-500">
+                >> 로그인
+            </button>
+            <button id="signup-tab" onclick="toggleMode(false)"
+                    class="flex-1 p-3 text-2xl font-bold border-2 border-b-0 border-green-500 bg-black menu-button hover:text-black hover:bg-green-500">
+                >> 사용자 등록
+            </button>
+        </div>
+
+        <!-- 로그인 섹션 -->
+        <div id="login-section" class="space-y-6">
+            <div>
+                <label for="login-email" class="block mb-2 text-green-400 text-xl">[INPUT] E-MAIL:</label>
+                <input type="email" id="login-email" class="terminal-input w-full" placeholder="E-mail 주소 입력" autocomplete="email">
+            </div>
+            <div>
+                <label for="login-password" class="block mb-2 text-green-400 text-xl">[INPUT] PASSWORD:</label>
+                <input type="password" id="login-password" class="terminal-input w-full" placeholder="비밀번호 입력" autocomplete="current-password">
+            </div>
+            <button onclick="handleSignIn()" class="menu-button w-full p-4 text-2xl font-bold mt-4">
+                >> [EXECUTE] 시스템 접속 시도
+            </button>
+        </div>
+
+        <!-- 회원가입 섹션 -->
+        <div id="signup-section" class="space-y-6" style="display:none;">
+            <div>
+                <label for="signup-email" class="block mb-2 text-green-400 text-xl">[INPUT] E-MAIL:</label>
+                <input type="email" id="signup-email" class="terminal-input w-full" placeholder="사용할 E-mail 주소" autocomplete="email">
+            </div>
+            <div>
+                <label for="signup-displayname" class="block mb-2 text-green-400 text-xl">[INPUT] NICKNAME:</label>
+                <input type="text" id="signup-displayname" class="terminal-input w-full" placeholder="게임 내에서 사용할 이름" autocomplete="nickname">
+            </div>
+            <div>
+                <label for="signup-password" class="block mb-2 text-green-400 text-xl">[INPUT] PASSWORD:</label>
+                <input type="password" id="signup-password" class="terminal-input w-full" placeholder="6자리 이상 비밀번호" autocomplete="new-password">
+            </div>
+            <button onclick="handleSignUp()" class="menu-button w-full p-4 text-2xl font-bold mt-4">
+                >> [EXECUTE] 사용자 등록 및 접속
+            </button>
+        </div>
+
+        <div class="mt-8 text-center border-t border-dashed border-green-700 pt-4">
+            <a href="main.html" class="menu-button p-2 inline-block text-lg font-semibold border-none hover:bg-black hover:text-green-500">
+                >> 메인 화면으로 돌아가기
+            </a>
+        </div>
+    </div>
+</body>
+</html>

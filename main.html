@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>시스템 초기화: 던전 터미널</title>
+
+    <!-- Tailwind (개발 편의용 CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- 터미널 폰트 (VT323) 사용 -->
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
+
+    <!-- Firebase v8 SDK (app/auth/db/firestore) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+    <style>
+        /* 고전 터미널 스타일 - 검은색 & 녹색 단색 구성 */
+        body {
+            font-family: 'VT323', 'Courier New', monospace;
+            background-color: #000000; /* 순수 검은색 배경 */
+            color: #00ff00; /* 밝은 녹색 텍스트 */
+            overflow: hidden;
+            letter-spacing: 2px;
+            font-size: 1.25rem; /* 가독성 향상 */
+        }
+        .main-card {
+            background-color: #000000;
+            border: 4px solid #00aa00;
+            box-shadow: 0 0 20px #00aa00, inset 0 0 10px #00aa00;
+            border-radius: 0; /* 각진 스타일 */
+        }
+        .menu-button {
+            background-color: #000000;
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            transition: background-color 0.1s, color 0.1s, box-shadow 0.1s;
+            text-shadow: 0 0 5px #00ff00; /* 네온 효과 */
+            border-radius: 0;
+        }
+        .menu-button:hover:not([disabled]) {
+            background-color: #00ff00;
+            color: #000000; /* 호버 시 반전 */
+            box-shadow: 0 0 15px #00ff00;
+            transform: translateY(-2px);
+        }
+        .menu-button[disabled] {
+            cursor: not-allowed;
+            opacity: 0.3;
+            border-color: #00aa00;
+            color: #00aa00;
+        }
+        .status-box {
+            border: 2px solid #00aa00;
+            box-shadow: 0 0 10px #00aa00;
+            background-color: #000000;
+        }
+        .list-item { color: #00ff00; }
+        .list-item:hover { background-color: #003300; }
+        .error-text {
+            color: #ff0000;
+            border-color: #ff0000;
+            text-shadow: 0 0 5px #ff0000;
+        }
+        .scanline::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            background: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,50,0,0.25) 50%);
+            background-size: 100% 4px;
+            z-index: 10; opacity: 0.5;
+        }
+    </style>
+</head>
+<body class="p-4 flex flex-col items-center justify-center min-h-screen relative scanline">
+
+    <!-- Firebase Config & Init -->
+    <script>
+        // 프로젝트의 실제 설정값으로 채움 (게임과 동일하게 통일)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDSK6u0YhUyqFxsAg_06hhdzBP161Ei7TM",
+            authDomain: "rouge-ba478.firebaseapp.com",
+            databaseURL: "https://rouge-ba478-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "rouge-ba478",
+            storageBucket: "rouge-ba478.appspot.com",
+            messagingSenderId: "912135902194",
+            appId: "1:912135902194:web:de617dec573fe4b25a116b"
+        };
+
+        // 초기화 (중복 초기화 방지)
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+        const rtdb = firebase.database(); // (다른 기능에서 사용 가능)
+        const firestore = firebase.firestore();
+
+        let currentUser = null;
+        let isLeaderboardVisible = false;
+
+        function showMessage(message, type = 'success') {
+            const container = document.getElementById('message-container');
+            container.textContent = `[MESSAGE] ${message}`;
+            container.className = `p-3 mb-4 rounded-none text-center font-bold border ${type === 'error' ? 'error-text border-red-500' : 'text-green-500 border-green-500'}`;
+            container.style.display = 'block';
+            setTimeout(() => { container.style.display = 'none'; }, 5000);
+        }
+
+        function handleSignOut() {
+            auth.signOut()
+                .then(() => showMessage('접속 종료 완료. 시스템을 초기 상태로 되돌립니다.', 'success'))
+                .catch((error) => showMessage(`접속 종료 오류: ${error.message}`, 'error'));
+        }
+
+        function toggleLeaderboard() {
+            const menuCard = document.getElementById('main-menu-card');
+            const leaderboardSection = document.getElementById('leaderboard-section');
+            const leaderboardBtn = document.getElementById('leaderboard-btn');
+            isLeaderboardVisible = !isLeaderboardVisible;
+
+            if (isLeaderboardVisible) {
+                menuCard.style.display = 'none';
+                leaderboardSection.style.display = 'block';
+                leaderboardBtn.textContent = '>> 메인 메뉴로 돌아가기';
+                loadLeaderboard();
+            } else {
+                menuCard.style.display = 'block';
+                leaderboardSection.style.display = 'none';
+                leaderboardBtn.textContent = '>> 명예의 전당';
+            }
+        }
+
+        function safeUserName(user) {
+            if (!user) return 'PLAYER';
+            const name = (user.displayName || (user.email ? user.email.split('@')[0] : '')).trim();
+            return name || 'PLAYER';
+        }
+
+        // UI 상태 업데이트
+        function updateUI(user) {
+            currentUser = user;
+            const userStatus = document.getElementById('user-status');
+            const authPrompt = document.getElementById('auth-prompt');
+            const gameStartBtn = document.getElementById('game-start-btn');
+            const authLinkSecondary = document.getElementById('auth-link-secondary');
+
+            // localStorage에 이름/아이디 저장 (게임에서 사용)
+            if (user) {
+                const name = safeUserName(user);
+                try {
+                    localStorage.setItem('currentUserName', name);
+                    localStorage.setItem('currentUserId', user.uid);
+                } catch(e) { /* localStorage 차단 시 무시 */ }
+            }
+
+            if (user) {
+                // 로그인 상태
+                const name = safeUserName(user);
+                userStatus.classList.remove('hidden');
+                userStatus.innerHTML = `
+                    <p class="text-xl font-bold text-green-500">> [PLAYER]: ${name}</p>
+                    <p class="text-sm text-green-400">> 시스템 접속 유지 중</p>
+                `;
+
+                authPrompt.style.display = 'none';
+                gameStartBtn.disabled = false;
+                gameStartBtn.href = 'game.html';
+                gameStartBtn.onclick = null;
+                authLinkSecondary.textContent = '>> [LOGOUT] 시스템 접속 종료';
+                authLinkSecondary.onclick = handleSignOut;
+                authLinkSecondary.href = '#';
+            } else {
+                // 로그아웃 상태
+                userStatus.classList.add('hidden');
+                authPrompt.style.display = 'block';
+                gameStartBtn.disabled = true;
+                gameStartBtn.href = '#';
+                gameStartBtn.onclick = (e) => { e.preventDefault(); showMessage('ERROR: 액세스 거부. 로그인이 필요합니다.', 'error'); };
+                authLinkSecondary.textContent = '>> [AUTH] 로그인 / 시스템 접속';
+                authLinkSecondary.onclick = null;
+                authLinkSecondary.href = 'auth.html';
+            }
+
+            if (isLeaderboardVisible) loadLeaderboard();
+        }
+
+        // Firestore 기반 명예의 전당 로드 (실시간 반영)
+        let unsubscribeLeaderboard = null;
+        function loadLeaderboard() {
+            const leaderboardList = document.getElementById('leaderboard-list');
+            leaderboardList.innerHTML = '<li class="text-center text-green-500 py-4">[DATA] 리더보드 데이터 로드 중...</li>';
+
+            if (unsubscribeLeaderboard) { unsubscribeLeaderboard(); unsubscribeLeaderboard = null; }
+
+            try {
+                const ref = firestore
+                    .collection('hall_of_fame')
+                    .orderBy('level', 'desc')
+                    .orderBy('playerLevel', 'desc')
+                    .orderBy('turn', 'asc')
+                    .limit(10);
+
+                unsubscribeLeaderboard = ref.onSnapshot(
+                    (snapshot) => {
+                        const scores = [];
+                        snapshot.forEach((doc) => scores.push({ id: doc.id, ...doc.data() }));
+
+                        const safeNum = (v, d = 0) => {
+                            const n = Number(v);
+                            return Number.isFinite(n) ? n : d;
+                        };
+
+                        leaderboardList.innerHTML = '';
+                        if (scores.length === 0) {
+                            leaderboardList.innerHTML = '<li class="text-center text-green-400 py-4">[INFO] 기록 없음. 최초의 탐험가가 되십시오.</li>';
+                            return;
+                        }
+
+                        scores.forEach((score) => {
+                            const nameSafe = (score.name || 'ANON_USER').toString().toUpperCase();
+                            const levelSafe = safeNum(score.playerLevel);
+                            const floorSafe = safeNum(score.level);
+                            const goldSafe = safeNum(score.gold);
+                            const turnSafe = safeNum(score.turn);
+
+                            const li = document.createElement('li');
+                            li.className = 'list-item flex justify-between items-center p-3 border-b border-dashed border-green-900';
+                            li.innerHTML = `
+                                <span class="text-green-200 w-4/12">${nameSafe}</span>
+                                <span class="text-green-500 w-2/12 text-center">${levelSafe}</span>
+                                <span class="text-green-500 w-2/12 text-center">${floorSafe} FLR</span>
+                                <span class="text-green-400 w-2/12 text-right">${goldSafe.toLocaleString()} GOLD</span>
+                                <span class="text-green-400 w-2/12 text-right">${turnSafe}</span>
+                            `;
+                            leaderboardList.appendChild(li);
+                        });
+                    },
+                    (error) => {
+                        console.error('Hall of Fame load error:', error);
+                        leaderboardList.innerHTML = `<li class="text-center error-text py-4">[ERROR] 명예의 전당 로드 실패: ${error.message}</li>`;
+                    }
+                );
+            } catch (e) {
+                console.error('Hall of Fame query setup error:', e);
+                leaderboardList.innerHTML = `<li class="text-center error-text py-4">[ERROR] 명예의 전당 초기화 오류: ${e.message}</li>`;
+            }
+        }
+
+        // 페이지 로드 시 인증 상태 확인 및 UI 업데이트
+        window.addEventListener('load', () => {
+            auth.onAuthStateChanged(updateUI);
+        });
+    </script>
+
+    <!-- UI Layout -->
+    <div class="main-card p-8 w-full max-w-2xl" id="main-menu-card">
+        <h1 class="text-5xl font-extrabold text-center mb-10 border-b-4 border-double border-green-500 pb-3">
+            -- DUNGEON TERMINAL --
+        </h1>
+
+        <!-- 메시지 출력 컨테이너 -->
+        <div id="message-container" style="display:none;" class="p-3 mb-4 text-center font-bold"></div>
+
+        <!-- 인증 프롬프트 (로그아웃 상태일 때만 보임) -->
+        <div id="auth-prompt" class="mb-10 p-5 border-2 border-green-500 text-center text-green-400" style="display: none;">
+            <p class="text-2xl font-bold mb-4">> [SYSTEM] 현재 사용자 인증이 필요합니다.</p>
+            <p class="text-xl">>> [INFO] 게임 실행 전 [AUTH]를 선택하십시오.</p>
+            <a href="auth.html" class="menu-button p-3 mt-4 inline-block font-bold text-lg hover:bg-green-500 hover:text-black">
+                >> [AUTH] 로그인/회원가입
+            </a>
+        </div>
+
+        <!-- 메인 메뉴 버튼 -->
+        <div class="flex flex-col space-y-4" id="menu-buttons">
+            <a id="game-start-btn" href="#" class="menu-button p-4 text-3xl font-bold text-center">
+                >> [GAME] 던전 탐험 시작
+            </a>
+
+            <button id="leaderboard-btn" onclick="toggleLeaderboard()" class="menu-button p-4 text-3xl font-bold text-center">
+                >> [RANK] 명예의 전당
+            </button>
+
+            <a href="auth.html" id="auth-link-secondary" class="menu-button p-3 text-xl font-semibold text-center mt-6">
+                <!-- 로그인 상태에 따라 텍스트가 바뀝니다. -->
+            </a>
+        </div>
+    </div>
+
+    <!-- 명예의 전당 (Leaderboard) 섹션 -->
+    <div id="leaderboard-section" class="main-card p-6 w-full max-w-2xl mt-8" style="display:none;">
+        <h2 class="text-3xl font-bold text-center border-b-2 border-green-500 pb-2 mb-4">
+            -- RANKING DATABASE (HALL OF FAME) --
+        </h2>
+
+        <div class="flex justify-between p-3 font-bold border-b border-green-500 text-green-400 text-xl">
+            <span class="w-4/12">이름</span>
+            <span class="w-2/12 text-center">레벨</span>
+            <span class="w-2/12 text-center">층수</span>
+            <span class="w-2/12 text-right">골드</span>
+            <span class="w-2/12 text-right">턴수</span>
+        </div>
+        <ul id="leaderboard-list" class="bg-black divide-y divide-green-900"></ul>
+
+        <button onclick="toggleLeaderboard()" class="menu-button p-3 mt-4 w-full text-xl font-bold">
+            >> [BACK] 메인 메뉴로 돌아가기
+        </button>
+    </div>
+
+    <!-- 플레이어 상태 표시 (왼쪽 하단 고정) -->
+    <div id="user-status" class="status-box absolute bottom-4 left-4 p-3 hidden"></div>
+</body>
+</html>
