@@ -1114,7 +1114,7 @@
             document.removeEventListener('keydown', handleInput);
 
             // ✅ 10층 이상일 경우에만 기록 기회 제공
-            const canRecord = gameState.currentLevel >= 10;
+            const canRecord = gameState.currentLevel >= 20;
 
             showGameOverModal(canRecord);
         }
@@ -1310,4 +1310,5 @@
 
 </body>
 </html>
+
 
