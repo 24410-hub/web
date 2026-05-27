@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SOUNDVAULT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0a0a0b;
+      --surface:  #111113;
+      --panel:    #18181c;
+      --border:   #2a2a30;
+      --accent:   #e8ff47;
+      --accent2:  #ff6b35;
+      --text:     #f0f0f0;
+      --muted:    #6a6a72;
+      --danger:   #ff4444;
+      --success:  #47ffb2;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── NOISE OVERLAY ─────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+
+    /* ─── HEADER ────────────────────────────── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2.5rem;
+      height: 64px;
+      background: rgba(10,10,11,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.7rem;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+    }
+
+    .logo span { color: var(--muted); font-size: 0.75rem; font-family: 'DM Mono', monospace; letter-spacing: 0.05em; display: block; margin-top: -6px; }
+
+    .header-right {
+      display: flex; align-items: center; gap: 1rem;
+    }
+
+    .stat-pill {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 0.3rem 0.8rem;
+      border-radius: 100px;
+    }
+
+    .stat-pill b { color: var(--accent); font-weight: 500; }
+
+    /* ─── HERO ──────────────────────────────── */
+    .hero {
+      position: relative;
+      padding: 5rem 2.5rem 3rem;
+      overflow: hidden;
+    }
+
+    .hero-bg {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 15% 50%, rgba(232,255,71,0.06) 0%, transparent 70%),
+                  radial-gradient(ellipse 50% 80% at 85% 20%, rgba(255,107,53,0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(3.5rem, 9vw, 7rem);
+      line-height: 0.92;
+      letter-spacing: 0.02em;
+      position: relative;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      color: var(--accent);
+      display: block;
+    }
+
+    .hero p {
+      margin-top: 1.2rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.03em;
+      max-width: 420px;
+    }
+
+    /* ─── ADD SECTION ───────────────────────── */
+    .add-section {
+      padding: 0 2.5rem 2.5rem;
+      position: relative;
+    }
+
+    .add-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.8rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .add-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+
+    .add-card h2 {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1.2rem;
+    }
+
+    .input-row {
+      display: flex; gap: 0.75rem; flex-wrap: wrap;
+    }
+
+    .input-wrapper {
+      flex: 1; min-width: 260px;
+      position: relative;
+    }
+
+    .input-wrapper label {
+      display: block;
+      font-size: 0.72rem;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      margin-bottom: 0.4rem;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(232,255,71,0.08);
+    }
+
+    input[type="text"]::placeholder { color: var(--muted); }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.75rem 1.6rem;
+      border-radius: 8px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.82rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      border: none; cursor: pointer;
+      transition: all 0.18s;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0a0a0b;
+      align-self: flex-end;
+    }
+
+    .btn-primary:hover { background: #f5ff70; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(232,255,71,0.25); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover { border-color: var(--muted); color: var(--text); }
+
+    /* ─── VALIDATION STATUS ─────────────────── */
+    .validation-bar {
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      display: none;
+      align-items: flex-start;
+      gap: 0.6rem;
+      line-height: 1.5;
+    }
+
+    .validation-bar.show { display: flex; }
+    .validation-bar.checking { background: rgba(232,255,71,0.06); border: 1px solid rgba(232,255,71,0.2); color: var(--accent); }
+    .validation-bar.ok      { background: rgba(71,255,178,0.06); border: 1px solid rgba(71,255,178,0.2); color: var(--success); }
+    .validation-bar.err     { background: rgba(255,68,68,0.06); border: 1px solid rgba(255,68,68,0.2); color: var(--danger); }
+
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      flex-shrink: 0; margin-top: 5px;
+    }
+
+    .checking .dot { background: var(--accent); animation: pulse 1s infinite; }
+    .ok .dot       { background: var(--success); }
+    .err .dot      { background: var(--danger); }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* ─── FILTER BAR ────────────────────────── */
+    .filter-bar {
+      padding: 0 2.5rem 1.5rem;
+      display: flex; gap: 0.5rem; flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+      padding: 0.4rem 1rem;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .filter-btn:hover, .filter-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #0a0a0b;
+    }
+
+    /* ─── SONG LIST ─────────────────────────── */
+    .list-section {
+      padding: 0 2.5rem 6rem;
+    }
+
+    .list-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .list-header h2 {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .song-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .song-card {
+      background: var(--panel);
+      padding: 1.2rem 1.4rem;
+      display: flex; flex-direction: column; gap: 0.5rem;
+      position: relative;
+      transition: background 0.15s;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .song-card:hover { background: var(--surface); }
+
+    .song-card:last-child { border-bottom: none; }
+
+    .song-index {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.5rem;
+      color: var(--border);
+      line-height: 1;
+      position: absolute;
+      right: 1.2rem; top: 0.8rem;
+      pointer-events: none;
+    }
+
+    .song-title {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.3;
+      padding-right: 2.5rem;
+    }
+
+    .song-summary {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .song-meta {
+      display: flex; align-items: center; gap: 0.6rem;
+      margin-top: 0.2rem;
+    }
+
+    .song-date {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    .song-actions {
+      display: flex; gap: 0.4rem; margin-left: auto;
+    }
+
+    .icon-btn {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem;
+      transition: all 0.15s;
+    }
+
+    .icon-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(232,255,71,0.06); }
+    .icon-btn.del:hover { border-color: var(--danger); color: var(--danger); background: rgba(255,68,68,0.06); }
+
+    .yt-link {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--accent2);
+      text-decoration: none;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255,107,53,0.3);
+      background: rgba(255,107,53,0.06);
+      transition: all 0.15s;
+    }
+
+    .yt-link:hover { background: rgba(255,107,53,0.15); }
+
+    /* ─── EMPTY STATE ───────────────────────── */
+    .empty-state {
+      grid-column: 1 / -1;
+      padding: 5rem 2rem;
+      text-align: center;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.82rem;
+      letter-spacing: 0.05em;
+      display: flex; flex-direction: column; align-items: center; gap: 1rem;
+    }
+
+    .empty-state svg { opacity: 0.2; }
+
+    /* ─── LOADING SPINNER ───────────────────── */
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(232,255,71,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── TOAST ─────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 2rem; right: 2rem;
+      z-index: 999;
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+
+    .toast-item {
+      padding: 0.75rem 1.2rem;
+      border-radius: 8px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      animation: toastIn 0.25s ease;
+      max-width: 320px;
+    }
+
+    .toast-item.success { background: var(--surface); border: 1px solid var(--success); color: var(--success); }
+    .toast-item.error   { background: var(--surface); border: 1px solid var(--danger); color: var(--danger); }
+    .toast-item.info    { background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+
+    @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ─── SCROLLBAR ─────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ─── RESPONSIVE ────────────────────────── */
+    @media (max-width: 600px) {
+      header, .hero, .add-section, .filter-bar, .list-section { padding-left: 1.2rem; padding-right: 1.2rem; }
+      .song-grid { grid-template-columns: 1fr; }
+      .input-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    SOUNDVAULT
+    <span>YOUTUBE MUSIC LIBRARY</span>
+  </div>
+  <div class="header-right">
+    <div class="stat-pill">Total <b id="count">0</b> tracks</div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <h1>YOUR<em>COLLECTION</em></h1>
+  <p>// Youtube links. AI-verified. Stored forever.</p>
+</section>
+
+<!-- ADD SECTION -->
+<section class="add-section">
+  <div class="add-card">
+    <h2>// ADD NEW TRACK</h2>
+    <div class="input-row">
+      <div class="input-wrapper">
+        <label>YOUTUBE URL</label>
+        <input type="text" id="urlInput" placeholder="https://youtube.com/watch?v=..." />
+      </div>
+      <div class="input-wrapper" style="max-width:220px">
+        <label>LABEL (선택)</label>
+        <input type="text" id="labelInput" placeholder="내 플레이리스트..." />
+      </div>
+      <button class="btn btn-primary" id="addBtn" style="align-self:flex-end;min-width:120px" onclick="addSong()">
+        SAVE TRACK
+      </button>
+    </div>
+    <div class="validation-bar" id="validationBar">
+      <div class="dot"></div>
+      <div id="validationMsg"></div>
+    </div>
+  </div>
+</section>
+
+<!-- FILTER BAR -->
+<div class="filter-bar">
+  <button class="filter-btn active" onclick="filterBy('all', this)">ALL</button>
+  <button class="filter-btn" onclick="filterBy('recent', this)">RECENT</button>
+</div>
+
+<!-- SONG LIST -->
+<section class="list-section">
+  <div class="list-header">
+    <h2>// TRACK LIST</h2>
+    <button class="btn btn-ghost" style="font-size:0.72rem;padding:0.35rem 0.9rem" onclick="loadSongs()">REFRESH</button>
+  </div>
+  <div class="song-grid" id="songGrid">
+    <div class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+      로딩 중...
+    </div>
+  </div>
+</section>
+
+<div id="toast"></div>
+
+<!-- FIREBASE + APP SCRIPT -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCPx_DWK6umYdIOEK26OA1kGIZ0dP26FxM",
+    authDomain: "study-2347b.firebaseapp.com",
+    databaseURL: "https://study-2347b-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "study-2347b",
+    storageBucket: "study-2347b.firebasestorage.app",
+    messagingSenderId: "536095687706",
+    appId: "1:536095687706:web:159e2bdf660bfe5191bda3"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const songsRef = ref(db, 'songs');
+
+  const GROK_API_KEY = "xai-3vNlcT7QQPBXgcU9YWU55ifUbMKEhH5mfRpJ543MdjzuztidPq2jIluev0RaGb10oSJ8opytI76Vg0Vu";
+
+  window._songs = [];
+  window._filter = 'all';
+
+  // ── REAL-TIME LISTENER ──────────────────────────
+  onValue(songsRef, (snapshot) => {
+    const data = snapshot.val();
+    window._songs = [];
+    if (data) {
+      Object.entries(data).forEach(([id, val]) => {
+        window._songs.push({ id, ...val });
+      });
+      window._songs.sort((a, b) => b.createdAt - a.createdAt);
+    }
+    document.getElementById('count').textContent = window._songs.length;
+    renderSongs();
+  });
+
+  // ── VALIDATE WITH GROK ──────────────────────────
+  async function validateWithGrok(url) {
+    const vBar = document.getElementById('validationBar');
+    const vMsg = document.getElementById('validationMsg');
+    vBar.className = 'validation-bar show checking';
+    vMsg.textContent = 'Grok AI가 링크를 분석하는 중...';
+
+    const prompt = `다음 YouTube URL이 음악/노래 영상인지 판단해줘: "${url}"
+응답은 반드시 JSON 형식으로만: {"isMusic": true/false, "summary": "한 줄 요약 (40자 이내)", "title": "추정 제목"}
+판단 기준: 뮤직비디오, 음원, 커버, 라이브 공연이면 true. 그 외는 false.`;
+
+    try {
+      const res = await fetch("https://api.x.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${GROK_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "grok-3-mini",
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 200
+        })
+      });
+
+      const data = await res.json();
+      const text = data.choices?.[0]?.message?.content || '';
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("JSON 파싱 실패");
+      const result = JSON.parse(jsonMatch[0]);
+
+      if (!result.isMusic) {
+        vBar.className = 'validation-bar show err';
+        vMsg.textContent = '음악 영상이 아닌 것으로 판단됨. 다시 확인해주세요.';
+        return null;
+      }
+
+      vBar.className = 'validation-bar show ok';
+      vMsg.textContent = `검증 완료 — ${result.summary}`;
+      return result;
+    } catch (e) {
+      // Grok 실패 시 수동 허용 (CORS 제한 가능)
+      vBar.className = 'validation-bar show ok';
+      vMsg.textContent = 'AI 검증 건너뜀 (네트워크 제한) — 수동 저장됩니다.';
+      return { isMusic: true, title: extractYTTitle(url), summary: 'AI 검증 없이 저장됨' };
+    }
+  }
+
+  function extractYTTitle(url) {
+    try {
+      const u = new URL(url);
+      return u.searchParams.get('v') || url.slice(-11);
+    } catch { return 'Unknown Track'; }
+  }
+
+  function isValidYT(url) {
+    return /(?:youtube\.com\/watch\?v=|youtu\.be\/)[A-Za-z0-9_-]{11}/.test(url);
+  }
+
+  // ── ADD SONG ────────────────────────────────────
+  window.addSong = async function() {
+    const urlInput = document.getElementById('urlInput');
+    const labelInput = document.getElementById('labelInput');
+    const btn = document.getElementById('addBtn');
+    const url = urlInput.value.trim();
+
+    if (!url) return showToast('URL을 입력해주세요.', 'error');
+    if (!isValidYT(url)) return showToast('유효한 YouTube URL이 아닙니다.', 'error');
+
+    btn.disabled = true;
+    btn.textContent = 'VERIFYING...';
+
+    const result = await validateWithGrok(url);
+    if (!result) {
+      btn.disabled = false;
+      btn.textContent = 'SAVE TRACK';
+      return;
+    }
+
+    try {
+      await push(songsRef, {
+        url,
+        title: result.title || extractYTTitle(url),
+        summary: result.summary || '',
+        label: labelInput.value.trim() || null,
+        createdAt: Date.now()
+      });
+      urlInput.value = '';
+      labelInput.value = '';
+      document.getElementById('validationBar').className = 'validation-bar';
+      showToast('트랙이 저장되었습니다.', 'success');
+    } catch (e) {
+      showToast('저장 실패: ' + e.message, 'error');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'SAVE TRACK';
+  };
+
+  // ── DELETE ──────────────────────────────────────
+  window.deleteSong = async function(id) {
+    if (!confirm('이 트랙을 삭제할까요?')) return;
+    await remove(ref(db, `songs/${id}`));
+    showToast('삭제되었습니다.', 'info');
+  };
+
+  // ── FILTER ──────────────────────────────────────
+  window.filterBy = function(mode, el) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    window._filter = mode;
+    renderSongs();
+  };
+
+  window.loadSongs = function() {
+    showToast('실시간 동기화 중...', 'info');
+  };
+
+  // ── RENDER ──────────────────────────────────────
+  function renderSongs() {
+    const grid = document.getElementById('songGrid');
+    let list = [...window._songs];
+
+    if (window._filter === 'recent') {
+      const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      list = list.filter(s => s.createdAt > cutoff);
+    }
+
+    if (list.length === 0) {
+      grid.innerHTML = `<div class="empty-state">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        아직 저장된 트랙이 없습니다.
+      </div>`;
+      return;
+    }
+
+    grid.innerHTML = list.map((s, i) => {
+      const date = new Date(s.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+      const ytId = extractYTId(s.url);
+      return `
+        <div class="song-card">
+          <div class="song-index">${String(i + 1).padStart(2, '0')}</div>
+          <div class="song-title">${escHtml(s.title || 'Unknown Track')}</div>
+          ${s.summary ? `<div class="song-summary">${escHtml(s.summary)}</div>` : ''}
+          <div class="song-meta">
+            <a class="yt-link" href="${escHtml(s.url)}" target="_blank" rel="noopener">
+              YT ${ytId ? ytId.slice(0,8) + '...' : ''}
+            </a>
+            ${s.label ? `<span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted)">${escHtml(s.label)}</span>` : ''}
+            <span class="song-date" style="margin-left:auto">${date}</span>
+            <div class="song-actions">
+              <button class="icon-btn" title="열기" onclick="window.open('${escHtml(s.url)}','_blank')">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              </button>
+              <button class="icon-btn del" title="삭제" onclick="deleteSong('${s.id}')">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function extractYTId(url) {
+    try {
+      const u = new URL(url);
+      return u.searchParams.get('v') || u.pathname.slice(1);
+    } catch { return null; }
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── TOAST ───────────────────────────────────────
+  window.showToast = function(msg, type = 'info') {
+    const container = document.getElementById('toast');
+    const el = document.createElement('div');
+    el.className = `toast-item ${type}`;
+    el.textContent = msg;
+    container.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  };
+
+  // Enter key
+  document.getElementById('urlInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.addSong();
+  });
+</script>
+</body>
+</html>
