@@ -1,0 +1,14 @@
+{
+  "name": "soundvault-bot",
+  "version": "1.0.0",
+  "description": "SOUNDVAULT Discord Bot — YouTube music library with Grok AI validation",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "firebase-admin": "^12.0.0",
+    "node-fetch": "^3.3.2"
+  }
+}
