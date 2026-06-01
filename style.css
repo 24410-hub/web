@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎵 MusicVault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=gg+sans:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- Auth Modal -->
+  <div id="authModal" class="modal-overlay active">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="logo-icon">🎵</div>
+        <h1>MusicVault</h1>
+        <p>음악을 저장하고, 언제든 꺼내 들으세요</p>
+      </div>
+      <div class="tab-switcher">
+        <button class="tab-btn active" id="loginTab" onclick="switchAuthTab('login')">로그인</button>
+        <button class="tab-btn" id="registerTab" onclick="switchAuthTab('register')">회원가입</button>
+      </div>
+
+      <!-- Login Form -->
+      <div id="loginForm" class="auth-form">
+        <div class="input-group">
+          <label>이메일</label>
+          <input type="email" id="loginEmail" placeholder="email@example.com" />
+        </div>
+        <div class="input-group">
+          <label>비밀번호</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" />
+        </div>
+        <button class="btn-primary" onclick="loginUser()">로그인</button>
+        <div class="divider"><span>또는</span></div>
+        <button class="btn-discord" onclick="loginWithDiscord()">
+          <svg width="20" height="20" viewBox="0 0 71 55" fill="none"><path d="M60.1045 4.8978C55.5792 2.8214 50.7265 1.2916 45.6527 0.41542C45.5603 0.39851 45.468 0.440769 45.4204 0.525289C44.7963 1.6353 44.105 3.0834 43.6209 4.2216C38.1637 3.4046 32.7345 3.4046 27.3892 4.2216C26.905 3.0581 26.1886 1.6353 25.5617 0.525289C25.5141 0.443589 25.4218 0.401329 25.3294 0.41542C20.2584 1.2888 15.4057 2.8186 10.8776 4.8978C10.8384 4.9147 10.8048 4.9429 10.7825 4.9795C1.57795 18.7309 -0.943561 32.1443 0.293408 45.3914C0.299005 45.4562 0.335386 45.5182 0.385761 45.5576C6.45866 50.0174 12.3413 52.7249 18.1147 54.5195C18.2071 54.5477 18.305 54.5139 18.3638 54.4378C19.7295 52.5728 20.9469 50.6063 21.9907 48.5383C22.0523 48.4172 21.9935 48.2735 21.8676 48.2256C19.9366 47.4931 18.0979 46.6 16.3292 45.5858C16.1893 45.5041 16.1781 45.304 16.3068 45.2082C16.679 44.9293 17.0513 44.6391 17.4067 44.3461C17.471 44.2926 17.5606 44.2813 17.6362 44.3151C29.2558 49.6202 41.8354 49.6202 53.3179 44.3151C53.3935 44.2785 53.4831 44.2898 53.5502 44.3433C53.9057 44.6363 54.2779 44.9293 54.6529 45.2082C54.7816 45.304 54.7732 45.5041 54.6333 45.5858C52.8646 46.6197 51.0259 47.4931 49.0921 48.2228C48.9662 48.2707 48.9102 48.4172 48.9718 48.5383C50.038 50.6034 51.2554 52.5699 52.5959 54.435C52.6519 54.5139 52.7526 54.5477 52.845 54.5195C58.6464 52.7249 64.529 50.0174 70.6019 45.5576C70.6551 45.5182 70.6887 45.459 70.6943 45.3942C72.1747 30.0791 68.2147 16.7757 60.1968 4.9823C60.1772 4.9429 60.1437 4.9147 60.1045 4.8978Z" fill="#5865F2"/></svg>
+          Discord로 로그인
+        </button>
+        <p id="loginError" class="error-msg"></p>
+      </div>
+
+      <!-- Register Form -->
+      <div id="registerForm" class="auth-form hidden">
+        <div class="input-group">
+          <label>사용자 이름</label>
+          <input type="text" id="regUsername" placeholder="닉네임" />
+        </div>
+        <div class="input-group">
+          <label>이메일</label>
+          <input type="email" id="regEmail" placeholder="email@example.com" />
+        </div>
+        <div class="input-group">
+          <label>비밀번호</label>
+          <input type="password" id="regPassword" placeholder="8자 이상" />
+        </div>
+        <button class="btn-primary" onclick="registerUser()">회원가입</button>
+        <div class="divider"><span>또는</span></div>
+        <button class="btn-discord" onclick="loginWithDiscord()">
+          <svg width="20" height="20" viewBox="0 0 71 55" fill="none"><path d="M60.1045 4.8978C55.5792 2.8214 50.7265 1.2916 45.6527 0.41542C45.5603 0.39851 45.468 0.440769 45.4204 0.525289C44.7963 1.6353 44.105 3.0834 43.6209 4.2216C38.1637 3.4046 32.7345 3.4046 27.3892 4.2216C26.905 3.0581 26.1886 1.6353 25.5617 0.525289C25.5141 0.443589 25.4218 0.401329 25.3294 0.41542C20.2584 1.2888 15.4057 2.8186 10.8776 4.8978C10.8384 4.9147 10.8048 4.9429 10.7825 4.9795C1.57795 18.7309 -0.943561 32.1443 0.293408 45.3914C0.299005 45.4562 0.335386 45.5182 0.385761 45.5576C6.45866 50.0174 12.3413 52.7249 18.1147 54.5195C18.2071 54.5477 18.305 54.5139 18.3638 54.4378C19.7295 52.5728 20.9469 50.6063 21.9907 48.5383C22.0523 48.4172 21.9935 48.2735 21.8676 48.2256C19.9366 47.4931 18.0979 46.6 16.3292 45.5858C16.1893 45.5041 16.1781 45.304 16.3068 45.2082C16.679 44.9293 17.0513 44.6391 17.4067 44.3461C17.471 44.2926 17.5606 44.2813 17.6362 44.3151C29.2558 49.6202 41.8354 49.6202 53.3179 44.3151C53.3935 44.2785 53.4831 44.2898 53.5502 44.3433C53.9057 44.6363 54.2779 44.9293 54.6529 45.2082C54.7816 45.304 54.7732 45.5041 54.6333 45.5858C52.8646 46.6197 51.0259 47.4931 49.0921 48.2228C48.9662 48.2707 48.9102 48.4172 48.9718 48.5383C50.038 50.6034 51.2554 52.5699 52.5959 54.435C52.6519 54.5139 52.7526 54.5477 52.845 54.5195C58.6464 52.7249 64.529 50.0174 70.6019 45.5576C70.6551 45.5182 70.6887 45.459 70.6943 45.3942C72.1747 30.0791 68.2147 16.7757 60.1968 4.9823C60.1772 4.9429 60.1437 4.9147 60.1045 4.8978Z" fill="#5865F2"/></svg>
+          Discord로 회원가입
+        </button>
+        <p id="registerError" class="error-msg"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" class="app-layout hidden">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">🎵 <span>MusicVault</span></div>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" onclick="showView('home')">
+          <span class="nav-icon">🏠</span> 홈
+        </button>
+        <button class="nav-item" onclick="showView('playlists')">
+          <span class="nav-icon">📂</span> 내 플레이리스트
+        </button>
+        <button class="nav-item" onclick="showView('add')">
+          <span class="nav-icon">➕</span> 노래 추가
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-info" id="userInfo">
+          <div class="user-avatar" id="userAvatar">?</div>
+          <div class="user-details">
+            <span class="user-name" id="userName">로딩중...</span>
+            <span class="user-tag" id="userTag">#0000</span>
+          </div>
+        </div>
+        <button class="btn-logout" onclick="logoutUser()" title="로그아웃">⏏</button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Home View -->
+      <div id="homeView" class="view active">
+        <div class="view-header">
+          <h2>안녕하세요, <span id="welcomeName"></span>! 👋</h2>
+          <p>오늘도 좋은 음악과 함께하세요</p>
+        </div>
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card">
+            <div class="stat-icon">📂</div>
+            <div class="stat-value" id="statPlaylists">0</div>
+            <div class="stat-label">플레이리스트</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🎵</div>
+            <div class="stat-value" id="statSongs">0</div>
+            <div class="stat-label">저장된 노래</div>
+          </div>
+        </div>
+        <div class="section-title">최근 플레이리스트</div>
+        <div id="recentPlaylists" class="playlist-grid"></div>
+      </div>
+
+      <!-- Playlists View -->
+      <div id="playlistsView" class="view hidden">
+        <div class="view-header">
+          <h2>📂 내 플레이리스트</h2>
+          <button class="btn-primary small" onclick="openCreatePlaylistModal()">+ 새 플레이리스트</button>
+        </div>
+        <div id="playlistsContainer" class="playlist-grid"></div>
+      </div>
+
+      <!-- Add Song View -->
+      <div id="addView" class="view hidden">
+        <div class="view-header">
+          <h2>➕ 노래 추가</h2>
+        </div>
+        <div class="add-form-card">
+          <div class="input-group">
+            <label>YouTube URL</label>
+            <input type="url" id="songUrl" placeholder="https://www.youtube.com/watch?v=..." />
+          </div>
+          <div class="input-group">
+            <label>플레이리스트 선택</label>
+            <select id="playlistSelect">
+              <option value="">-- 플레이리스트 선택 --</option>
+            </select>
+          </div>
+          <div id="songPreview" class="song-preview hidden"></div>
+          <button class="btn-primary" onclick="addSongToPlaylist()">🎵 추가하기</button>
+          <p id="addSongMsg" class="success-msg"></p>
+        </div>
+      </div>
+
+      <!-- Playlist Detail View -->
+      <div id="playlistDetailView" class="view hidden">
+        <div class="view-header">
+          <button class="btn-back" onclick="backToPlaylists()">← 뒤로</button>
+          <h2 id="detailPlaylistName">플레이리스트</h2>
+          <button class="btn-danger small" onclick="deleteCurrentPlaylist()">🗑 플레이리스트 삭제</button>
+        </div>
+        <div id="playerSection" class="player-section hidden">
+          <div id="youtubePlayer"></div>
+          <div class="player-controls">
+            <button onclick="playerPrev()">⏮</button>
+            <button onclick="playerToggle()" id="playPauseBtn">⏸</button>
+            <button onclick="playerNext()">⏭</button>
+            <span id="nowPlayingTitle" class="now-playing-text">재생 중...</span>
+          </div>
+        </div>
+        <div class="songs-list" id="songsListContainer"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Create Playlist Modal -->
+  <div id="createPlaylistModal" class="modal-overlay hidden">
+    <div class="modal-box small">
+      <h3>새 플레이리스트 만들기</h3>
+      <div class="input-group">
+        <label>플레이리스트 이름</label>
+        <input type="text" id="newPlaylistName" placeholder="예: 내 최애 노래들" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeCreatePlaylistModal()">취소</button>
+        <button class="btn-primary" onclick="createPlaylist()">만들기</button>
+      </div>
+      <p id="createPlaylistMsg" class="error-msg"></p>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script type="module" src="js/firebase-config.js"></script>
+  <script type="module" src="js/auth.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
