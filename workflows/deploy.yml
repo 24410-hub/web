@@ -1,0 +1,9 @@
+name: Test Workflow
+on: [push] # 어떤 브랜치든 푸시만 되면 실행
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hello World
+        run: echo "GitHub Actions is working!"
