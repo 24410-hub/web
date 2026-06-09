@@ -6,7 +6,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 // ─── OpenAI API Key ───────────────────────────────────────────
-const OPENAI_API_KEY = "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";
+const OPENAI_API_KEY = "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";
 
 // ─── State ────────────────────────────────────────────────────
 let currentUser         = null;
@@ -168,7 +168,9 @@ async function loadPlaylistSelectOptions() {
 window.openCreatePlaylistModal = () => {
   document.getElementById("createPlaylistModal").classList.remove("hidden");
   document.getElementById("newPlaylistName").value = "";
-  document.getElementById("createPlaylistMsg").textContent = "";
+  const msg = document.getElementById("createPlaylistMsg");
+  msg.textContent = "";
+  msg.style.color = "";
 };
 window.closeCreatePlaylistModal = () => {
   document.getElementById("createPlaylistModal").classList.add("hidden");
@@ -177,7 +179,24 @@ window.createPlaylist = async () => {
   if (!currentUser) return;
   const name = document.getElementById("newPlaylistName").value.trim();
   const msg  = document.getElementById("createPlaylistMsg");
-  if (!name) { msg.textContent = "이름을 입력해주세요."; return; }
+  if (!name) {
+    msg.style.color = "var(--accent-red)";
+    msg.textContent = "이름을 입력해주세요.";
+    return;
+  }
+
+  // AI 플리 이름 검수
+  msg.style.color = "var(--text-muted)";
+  msg.textContent = "🤖 이름 검사 중...";
+
+  const nameCheck = await checkPlaylistName(name);
+
+  if (nameCheck.blocked) {
+    msg.style.color = "var(--accent-red)";
+    msg.textContent = `⛔ ${nameCheck.reason}`;
+    return;
+  }
+
   const newRef = push(ref(db, `playlists/${currentUser.uid}`));
   await set(newRef, { name, createdAt: Date.now(), isPublic: false, songs: {}, likes: 0 });
   closeCreatePlaylistModal();
@@ -185,6 +204,95 @@ window.createPlaylist = async () => {
   loadPlaylistSelectOptions();
   loadStats();
 };
+
+// ─── AI 플리 이름 검수 ────────────────────────────────────────
+// 반환값: { blocked: boolean, reason: string }
+async function checkPlaylistName(name) {
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type":  "application/json",
+        "Authorization": `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `너는 플레이리스트 이름이 부적절한지 판단하는 검열 도우미야.
+판단 기준은 딱 하나: 한국의 실존 인물 이름(정치인, 연예인, 공인 등)을 풍자·비하·희화화한 변형이 들어있는가.
+예시: "이기노무" (노무현), "건희야놀자" (이건희), "박근메" (박근혜) 같이 이름을 비틀어 비난하는 경우.
+일반적인 욕설, 영어 이름, 외국 인물은 판단하지 않는다.
+
+반드시 아래 JSON 형식으로만 응답해. 다른 말 절대 금지:
+{"blocked": true/false, "reason": "한 문장 설명"}`
+          },
+          {
+            role: "user",
+            content: `플레이리스트 이름: "${name}"`
+          }
+        ],
+        max_tokens: 80
+      })
+    });
+
+    // ── HTTP 오류 처리 ──────────────────────────────────────
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      const code    = errData?.error?.code    || "";
+      const errType = errData?.error?.type    || "";
+      const status  = res.status;
+
+      if (status === 401 || code === "invalid_api_key") {
+        return { blocked: false, reason: "[검열 건너뜀] API 키가 유효하지 않습니다." };
+      }
+      if (status === 429 || code === "rate_limit_exceeded" || errType === "requests") {
+        return { blocked: false, reason: "[검열 건너뜀] API 요청 한도 초과, 잠시 후 다시 시도해주세요." };
+      }
+      if (status === 500 || status === 503) {
+        return { blocked: false, reason: "[검열 건너뜀] OpenAI 서버 오류가 발생했습니다." };
+      }
+      return { blocked: false, reason: `[검열 건너뜀] 알 수 없는 오류 (HTTP ${status})` };
+    }
+
+    const data = await res.json();
+    const raw  = data.choices?.[0]?.message?.content?.trim();
+
+    // ── 응답이 아예 없는 경우 ───────────────────────────────
+    if (!raw) {
+      return { blocked: false, reason: "[검열 건너뜀] AI가 응답을 생성하지 못했습니다." };
+    }
+
+    // ── JSON 파싱 ───────────────────────────────────────────
+    let parsed;
+    try {
+      // 모델이 ```json ... ``` 로 감쌀 수도 있으므로 fence 제거
+      const clean = raw.replace(/```json|```/gi, "").trim();
+      parsed = JSON.parse(clean);
+    } catch {
+      // 형식이 깨진 경우 — 응답 내용은 있으나 파싱 불가
+      return { blocked: false, reason: "[검열 건너뜀] AI 응답 형식을 읽지 못했습니다." };
+    }
+
+    // ── 필드 검증 ──────────────────────────────────────────
+    if (typeof parsed.blocked !== "boolean") {
+      return { blocked: false, reason: "[검열 건너뜀] AI 응답에 판단 결과가 없습니다." };
+    }
+
+    return {
+      blocked: parsed.blocked,
+      reason:  parsed.reason || (parsed.blocked ? "부적절한 이름입니다." : "")
+    };
+
+  } catch (err) {
+    // ── 네트워크 자체 실패 ──────────────────────────────────
+    if (err instanceof TypeError && err.message.includes("fetch")) {
+      return { blocked: false, reason: "[검열 건너뜀] 네트워크 연결을 확인해주세요." };
+    }
+    return { blocked: false, reason: "[검열 건너뜀] 이름 검사 중 예기치 못한 오류가 발생했습니다." };
+  }
+}
 
 // ─── Open Playlist Detail ────────────────────────────────────
 window.openPlaylist = async (id, name, isPublic) => {
@@ -336,6 +444,12 @@ document.getElementById("songUrl")?.addEventListener("input", debounce(async (e)
 }, 700));
 
 // ─── ChatGPT AI 음악 판단 ─────────────────────────────────────
+// 오류 유형별 세분화:
+//   HTTP 401  → API 키 문제
+//   HTTP 429  → 요청 한도 초과
+//   HTTP 500/503 → OpenAI 서버 문제
+//   응답 비어있음 → 응답 생성 실패
+//   fetch 실패 → 네트워크 오류
 async function runAIJudge(title, channel) {
   const aiBox  = document.getElementById("aiJudgeBox");
   const aiText = document.getElementById("aiJudgeText");
@@ -344,18 +458,29 @@ async function runAIJudge(title, channel) {
   aiText.className = "ai-judge-text";
   aiText.textContent = "AI가 판단 중...";
 
+  // ── 헬퍼: 오류 표시 후 fail-open 반환 ──────────────────────
+  const showError = (msg) => {
+    lastAIJudgeText = msg;
+    aiText.className = "ai-judge-text warn";
+    aiText.textContent = msg;
+    return true; // fail open — 오류 시 추가 허용
+  };
+
+  // ── 네트워크 요청 ───────────────────────────────────────────
+  let res;
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type":  "application/json",
         "Authorization": `Bearer ${OPENAI_API_KEY}`
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        messages: [{
-          role: "system",
-          content: `너는 YouTube 영상이 음악인지 판단하는 도우미야. 
+        messages: [
+          {
+            role: "system",
+            content: `너는 YouTube 영상이 음악인지 판단하는 도우미야.
 음악의 기준은 넓게 봐: 노래, 뮤직비디오, OST, 커버곡, 라이브 공연, 애니메이션 OP/ED, 게임 OST 등 모두 포함.
 판단 결과를 반드시 한국어로, 아래 형식으로만 답해:
 [결과: 음악 / 음악 아님 / 판단 불가]
@@ -364,33 +489,80 @@ async function runAIJudge(title, channel) {
 예시:
 [결과: 음악]
 [이유: 공식 뮤직비디오로, 명확한 노래 콘텐츠입니다.]`
-        }, {
-          role: "user",
-          content: `영상 제목: "${title}"\n채널: "${channel}"`
-        }],
+          },
+          {
+            role: "user",
+            content: `영상 제목: "${title}"\n채널: "${channel}"`
+          }
+        ],
         max_tokens: 100
       })
     });
-
-    if (!res.ok) throw new Error("API 오류");
-    const data = await res.json();
-    const answer = data.choices?.[0]?.message?.content?.trim() || "판단 불가";
-
-    lastAIJudgeText = answer;
-
-    const isMusic = answer.includes("결과: 음악") && !answer.includes("음악 아님");
-    const isFail  = answer.includes("판단 불가") || answer.includes("음악 아님");
-
-    aiText.className = "ai-judge-text " + (isFail ? "fail" : "pass");
-    aiText.textContent = answer;
-
-    return !isFail && isMusic;
   } catch (err) {
-    lastAIJudgeText = "AI 판단 중 오류가 발생했습니다. 수동으로 확인해주세요.";
-    aiText.className = "ai-judge-text";
-    aiText.textContent = lastAIJudgeText;
-    return true; // fail open
+    // fetch 자체 실패 (인터넷 끊김, CORS, DNS 등)
+    return showError("⚠️ [네트워크 오류] AI 서버에 연결할 수 없습니다. 인터넷 연결을 확인해주세요.");
   }
+
+  // ── HTTP 오류 세분화 ────────────────────────────────────────
+  if (!res.ok) {
+    let errData = {};
+    try { errData = await res.json(); } catch { /* 응답 바디 없음 */ }
+
+    const code    = errData?.error?.code    || "";
+    const errType = errData?.error?.type    || "";
+    const status  = res.status;
+
+    if (status === 401 || code === "invalid_api_key") {
+      return showError("⚠️ [API 키 오류] API 키가 유효하지 않거나 만료되었습니다.");
+    }
+    if (status === 429) {
+      if (errType === "insufficient_quota" || code === "insufficient_quota") {
+        return showError("⚠️ [한도 초과] API 사용 한도를 초과했습니다. OpenAI 계정을 확인해주세요.");
+      }
+      return showError("⚠️ [요청 과다] 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.");
+    }
+    if (status === 500) {
+      return showError("⚠️ [서버 오류] OpenAI 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    }
+    if (status === 503) {
+      return showError("⚠️ [서비스 점검] OpenAI 서비스가 일시적으로 중단되었습니다.");
+    }
+    return showError(`⚠️ [알 수 없는 오류] HTTP ${status} — AI 판단을 완료하지 못했습니다.`);
+  }
+
+  // ── 응답 파싱 ───────────────────────────────────────────────
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    return showError("⚠️ [응답 오류] AI 응답을 읽는 중 오류가 발생했습니다.");
+  }
+
+  // ── 응답 내용 검증 ──────────────────────────────────────────
+  const answer = data.choices?.[0]?.message?.content?.trim();
+
+  if (!answer) {
+    // choices 배열이 비었거나 content가 null/빈 문자열인 경우
+    const finishReason = data.choices?.[0]?.finish_reason || "";
+    if (finishReason === "length") {
+      return showError("⚠️ [응답 생성 실패] AI가 응답을 생성했으나 길이 제한으로 잘렸습니다.");
+    }
+    if (finishReason === "content_filter") {
+      return showError("⚠️ [응답 생성 실패] AI 콘텐츠 필터에 의해 응답이 차단되었습니다.");
+    }
+    return showError("⚠️ [응답 생성 실패] AI가 답변을 생성하지 못했습니다. 다시 시도해주세요.");
+  }
+
+  // ── 정상 판단 결과 표시 ────────────────────────────────────
+  lastAIJudgeText = answer;
+
+  const isMusic = answer.includes("결과: 음악") && !answer.includes("음악 아님");
+  const isFail  = answer.includes("판단 불가") || answer.includes("음악 아님");
+
+  aiText.className = "ai-judge-text " + (isFail ? "fail" : "pass");
+  aiText.textContent = answer;
+
+  return !isFail && isMusic;
 }
 
 // ─── TTS (Web Speech API) ────────────────────────────────────
