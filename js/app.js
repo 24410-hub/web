@@ -8,7 +8,7 @@ import {
 // ─── Apps Script 프록시 URL ───────────────────────────────────
 // Code.gs 배포 후 여기에 붙여넣기
 // 예) "https://script.google.com/macros/s/XXXXXXXXXX/exec"
-const GAS_PROXY_URL = "여기에_배포된_Apps_Script_URL_붙여넣기";
+const GAS_PROXY_URL = "https://script.google.com/macros/s/AKfycbx78ImaU1cEsojuQuhXCXf545IIJ-i_oYBETx3JN6_p7jqbnBcg6omnHBIFbMhEKk-yWA/exec";
 
 // ─── State ────────────────────────────────────────────────────
 let currentUser         = null;
