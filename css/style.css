@@ -357,6 +357,7 @@ html, body {
 .ai-judge-text { font-size: 13px; color: var(--text-primary); line-height: 1.6; }
 .ai-judge-text.fail { color: var(--accent-red); }
 .ai-judge-text.pass { color: var(--accent-green); }
+.ai-judge-text.warn { color: var(--accent-yellow); }
 
 /* ─── Song Preview ─── */
 .song-preview {
